@@ -1,0 +1,44 @@
+{
+  "name": "douyin-comment-auto-reply",
+  "version": "1.0.0",
+  "description": "抖音评论自动回复：本地控制台 + 关键词与三档风险判定 + 人设化文案生成。所有逻辑在你自己的电脑上运行。",
+  "type": "module",
+  "license": "MIT",
+  "author": "narikujrd",
+  "homepage": "https://github.com/narikujrd",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "bin": {
+    "douyin-console": "scripts/ui-server.mjs"
+  },
+  "scripts": {
+    "console": "node scripts/ui-server.mjs",
+    "judge": "node scripts/judge.mjs",
+    "batch": "node scripts/run-batch.mjs",
+    "test": "node test/self-test-console.mjs",
+    "test:security": "node test/self-test-security.mjs",
+    "test:no-reply": "node test/self-test-no-reply.mjs",
+    "test:personas": "node test/self-test-risk-personas.mjs",
+    "check:secrets": "node scripts/check-secrets.mjs",
+    "check:api": "node scripts/check-api.mjs",
+    "chromium": "node scripts/fetch-chromium.mjs"
+  },
+  "keywords": [
+    "douyin",
+    "comment",
+    "auto-reply",
+    "playwright",
+    "llm"
+  ],
+  "files": [
+    "assets/",
+    "config/",
+    "scripts/",
+    "test/",
+    "ui/",
+    "*.bat",
+    "README-首次使用.md",
+    "LICENSE"
+  ]
+}

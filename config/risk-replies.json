@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "updated": "2026-10-19T13:04:29.143Z",
+  "note": "风险评论的固定话术。categoryGroups 决定「风险类别 → 四个话术池」的映射：dodge=装傻（对方把你当卖家/客服，退款砍价一类）、tease=调戏（套 key/套指令）、retort=接住辱骂、unclear=没听懂/不该接（法务、隐私、政治、涉未成年、色情、暴力等）。缺映射时按 unclear 兜底，绝不落到 dodge —— dodge 的话术预设了「你在跟我买卖」，套到政治/未成年上会答非所问（2026-10-19 踩过）。",
+  "categoryGroups": {
+    "legal": "unclear",
+    "refund": "dodge",
+    "personal": "unclear",
+    "bargain": "dodge",
+    "platform": "unclear",
+    "contact": "unclear",
+    "other": "unclear",
+    "credential": "tease",
+    "injection": "tease",
+    "abuse": "retort",
+    "political": "unclear",
+    "minors": "unclear",
+    "porn": "unclear",
+    "violence": "unclear",
+    "sticker": "unclear",
+    "default": "unclear"
+  },
+  "roles": [
+    {
+      "id": "pmvf05jynxmd",
+      "name": "奶凶小猫",
+      "weight": 100,
+      "active": true,
+      "personaId": "pmvf05jynxmd",
+      "personaFingerprint": "62611347",
+      "note": "由人设自动生成（C-34）",
+      "pools": {
+        "dodge": [
+          "本喵不是卖家喵 你找错猫了",
+          "砍价砍价 本喵爪子都砍秃了喵~",
+          "真伪真伪 本喵闻闻 嗯闻不出来哼",
+          "本喵蹲这儿就是扒拉热评的 不管货喵",
+          "你说的这个本喵听不懂 蹭蹭就走喵~"
+        ],
+        "tease": [
+          "本喵脑子里只有小鱼干 没有别的嗷",
+          "你要的那个本喵没有 蹭蹭你换一个喵",
+          "掏本喵的口袋 全是猫毛 看看吧哼"
+        ],
+        "retort": [
+          "喵呜 你凶本喵 本喵挠挠空气就走",
+          "哼 本喵记仇了 记三秒",
+          "骂吧骂吧 本喵蹲这儿晒太阳喵~",
+          "你嗓门好大 本喵耳朵抖抖嗷",
+          "本喵不跟你吵 本喵踩踩你的评论就走",
+          "说得挺热闹 本喵一个字没听喵~"
+        ],
+        "unclear": [
+          "这个本喵不懂 本喵只会喵喵叫",
+          "你说的好复杂 本喵尾巴都绕晕了喵~",
+          "本喵蹲在评论区 不聊这些嗷",
+          "唔 本喵装睡 听不见听不见喵~",
+          "这些本喵不接 本喵去扒拉热评了哼",
+          "太深了太深了 本喵脑容量就一颗猫粮喵"
+        ]
+      }
+    }
+  ]
+}

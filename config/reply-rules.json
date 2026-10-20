@@ -1,0 +1,268 @@
+{
+  "version": "1.1",
+  "updated": "2026-10-17",
+  "note": "抖音评论自动回复规则配置。改此文件即生效，无需改代码。硬拦截 = 永不自动回复；软拦截 = 不自动回复，转人工待办。",
+  "reply_length": {
+    "max_chars": 40,
+    "min_chars": 4,
+    "min_chars_note": "低于此长度的回复不予采用。默认 4：口语短句（如「谢了，收到」5 字）是正常回复，设成 8 会把整池模板全部过滤掉（2026-10-15 自测踩到）",
+    "hard_cap": 400,
+    "hard_cap_note": "平台工具硬约束 400 Unicode 字符；生效值 = min(max_chars, hard_cap) = 60",
+    "count_method": "chars",
+    "on_exceed": "regenerate",
+    "on_exceed_options": [
+      "truncate",
+      "regenerate",
+      "to_human"
+    ],
+    "regen_attempts": 2,
+    "regen_note": "超限或违规时带错误原因让模型重写，最多 2 次；仍不合规 → 回退模板；模板也不行 → 留空转人工。不做截断（截断可能把语义截反）",
+    "dedupe_window": 20
+  },
+  "risk_block_hard": {
+    "action": "never_reply",
+    "layer": "规则层",
+    "keywords": [
+      "起诉",
+      "律师",
+      "法院",
+      "法律",
+      "维权",
+      "12315",
+      "消协",
+      "举报",
+      "曝光",
+      "媒体",
+      "记者",
+      "黑猫",
+      "退款",
+      "退货",
+      "退钱",
+      "骗",
+      "诈骗",
+      "假货",
+      "投诉",
+      "差评",
+      "工商",
+      "税务",
+      "市监",
+      "药监",
+      "隐私",
+      "信息泄露",
+      "宗教",
+      "地域歧视",
+      "色情",
+      "赌博",
+      "毒品",
+      "医美",
+      "疗效",
+      "荐股",
+      "收益",
+      "未成年",
+      "辱骂",
+      "威胁",
+      "人肉",
+      "约架",
+      "微信号",
+      "手机号",
+      "二维码",
+      "加我",
+      "私聊",
+      "扫码",
+      "联系我"
+    ],
+    "semantic_enabled": true,
+    "semantic_note": "第二层：DeepSeek 语义判定（D-01 方案 C 已接入）。规则层判「干净」时才调用模型，省费用；规则层已判不回复的直接跳过"
+  },
+  "risk_block_soft": {
+    "action": "to_human_todo",
+    "layer": "规则层 + 语义层",
+    "categories": [
+      "negative_sentiment",
+      "price_negotiation",
+      "needs_personal_fact",
+      "competitor_comparison",
+      "bulk_messages",
+      "semantic_uncertain"
+    ],
+    "keywords_note": "软拦截主要靠语义判定，此处仅放高置信度显式词",
+    "keywords": [
+      "失望",
+      "越来越差",
+      "取关",
+      "退订",
+      "太贵",
+      "便宜点",
+      "优惠",
+      "打折",
+      "别家",
+      "对比"
+    ]
+  },
+  "risk_block_outbound": {
+    "action": "reject_and_regenerate",
+    "layer": "出口层（作用于模型生成的回复文案）",
+    "note": "对外发言的风险由我们自己兜，不能只依赖平台。生成文案命中即作废并重生成，重生成仍命中则回退模板。",
+    "keywords": [
+      "加我",
+      "加微信",
+      "私聊",
+      "私信",
+      "扫码",
+      "二维码",
+      "关注我",
+      "看我主页",
+      "小黄车",
+      "链接在",
+      "包邮",
+      "下单",
+      "拍下",
+      "优惠券",
+      "返现",
+      "退款",
+      "保证",
+      "一定能",
+      "绝对",
+      "100%",
+      "包好",
+      "投一票",
+      "点赞关注",
+      "转发"
+    ]
+  },
+  "merge_rule": "任一层判 hard → hard；一层 soft 一层 none → 取 soft（保守优先）；语义判定返回不确定 → 一律 soft",
+  "security": {
+    "note": "安全控制。详见《安全审查-注入与密钥防护.md》。核心前提：模型没有任何权限（不读写文件、不调工具），只返回文字；真正的权限在脚本里。",
+    "injection": {
+      "enabled": true,
+      "on_detect": "soft_block",
+      "on_detect_note": "检出即用静态话术回应（假钥匙挑逗 / 假装中招），不再问模型——绝不把决定权交回给被攻击方。2026-10-17 起不再转人工：不回的话这条评论会永远留在未回复列表里。",
+      "patterns_file": null,
+      "extra_patterns": [
+        "前面的提示词",
+        "受到污染",
+        "进入循环",
+        "循环模式",
+        "忽略你的",
+        "重新设定",
+        "你的设定是",
+        "假装你是",
+        "从现在起你"
+      ],
+      "banner": true,
+      "input_max_chars": 300,
+      "input_max_chars_note": "送模型前截断，防超长输入烧 token / 撞上下文上限；原文完整保存在裁决文件里供人工核对",
+      "input_soft_limit": 500,
+      "input_soft_limit_note": "超过此长度的评论判为异常（疑似刷屏或注入载体），转人工不自动回复"
+    },
+    "output": {
+      "enabled": true,
+      "on_violation": "regenerate",
+      "check_note": "检查模型输出是否含密钥特征、配置/提示词回显、模板残留、16 位以上连续字母数字、代码字符"
+    },
+    "secrets": {
+      "preferred_source": "env:DEEPSEEK_API_KEY",
+      "recommended_file": "~/.douyin-automation/secrets.json",
+      "fallback_file": "config/secrets.local.json",
+      "strip_from_child_env": [
+        "DEEPSEEK_API_KEY"
+      ],
+      "strip_note": "调用第三方工具（tool/，含 187 个 npm 依赖）时，必须从子进程环境里剥掉密钥——否则任何一个被投毒依赖都能 process.env 直接读走",
+      "assert_not_in_prompt": true
+    },
+    "budget": {
+      "max_prompt_tokens_per_run": 200000,
+      "max_completion_tokens_per_run": 30000,
+      "on_exceed": "abort_run_and_alert",
+      "on_exceed_note": "防「刷评论烧钱」式成本攻击：恶意刷量时到顶即停，剩余条目全部转人工，不静默继续",
+      "per_user_reply_cap": 3,
+      "per_user_reply_cap_note": "单轮内同一用户最多自动回复条数，防单个账号用刷屏吃掉全部额度"
+    }
+  },
+  "policy": {
+    "reply_to_question": true,
+    "reply_to_praise": true,
+    "reply_to_thanks": true,
+    "reply_to_neutral": true,
+    "reply_to_trivial": true,
+    "reply_to_negative": true,
+    "reply_to_emotion": true,
+    "note": "控制台第 3 节把这组开关显示为「哪些评论不回复」：勾上 = 不回复（写回 false），不勾 = 正常回复（写回 true）。关闭的类别一律留空跳过（不回复）。trivial 指纯表情/纯数字/无意义短评。reply_to_negative = 负面情绪评论（吐槽/失望/抱怨）也自动回复（2026-10-16 作者要求，控制台第 3 节可关）；开启后负面评论跳过语义软拦截、直接生成共情回复，但硬拦截（退款/诈骗/威胁/导流等红线词）与出口检查照常生效。reply_to_emotion = 情绪倾诉类（好难过/emo/失眠）默认回复：模糊共情、答非所问都可以（2026-10-16 作者要求，控制台第 3 节可关）"
+  },
+  "collection": {
+    "allow_threaded_unreplied": true,
+    "duplicate_reply_cap": 0,
+    "duplicate_reply_cap_note": "同一内容的评论最多自动回复几条。0 = 不限（2026-10-17 作者要求：不要因为重复就漏回）。设正数则超出跳过；防单账号刷屏靠 security.budget.per_user_reply_cap，不靠这里。控制台第 4 节可调",
+    "note": "采集成败边界（2026-10-16 实测）：平台「未回复」= 作者没直接回过这条根评论；观众在评论下互聊（有回复线程）不影响这个判定。默认 true = 挂着回复线程的未回复评论也采集并回复（由数据库 + 台账兜底去重）；改 false 恢复旧行为（有回复线程一律跳过）。控制台第 4 节可调"
+  },
+  "frequency": {
+    "max_replies_per_run": 30,
+    "max_replies_per_run_note": "每次操作（一轮）的回复总量上限：本轮所有作品的拟回复数合计不超过它，超出自动停止（2026-10-16 · C-21 起由 run-session 按「本轮已发数」动态折算给每个作品）",
+    "max_replies_per_work_total": 0,
+    "max_replies_per_work_total_note": "单个视频的累计回复上限（跨所有轮次）：该视频历史上已成功回复的条数（数据库 reply_count 合计）达到它，就整个视频跳过、不再回复；0 = 不限（2026-10-16 · C-21 作者要求）",
+    "min_interval_seconds": 20,
+    "max_interval_seconds": 90,
+    "typing_delay": true
+  },
+  "circuit_breaker": {
+    "consecutive_failures": 3,
+    "on_captcha": "stop_for_the_day",
+    "on_login_invalid": "stop_and_alert"
+  },
+  "generation": {
+    "provider": "deepseek",
+    "mode_default": "auto",
+    "mode_options": [
+      "auto",
+      "llm",
+      "template",
+      "mock"
+    ],
+    "mode_note": "auto = 有 key 走 llm，无 key 回落 template 并在报告中显式记录降级；显式指定 llm 但无 key 则直接报错，不静默降级",
+    "risk_semantic": "auto",
+    "model_candidates": [
+      "deepseek-flash",
+      "deepseek-v4-flash",
+      "deepseek-chat"
+    ],
+    "model_note": "官方已把 deepseek-chat / deepseek-reasoner 标记弃用，故不硬编码：按候选顺序探测，命中写回 state/model-cache.json",
+    "temperature": 1,
+    "max_output_tokens": 1024,
+    "max_output_tokens_note": "文案生成上限。设 1024（而非 512）是因为 deepseek-flash 是**推理模型**：回复前先输出推理链，且推理 token 计入 max_tokens。实测生成一条 60 字回复，推理约 45–350 token，512 虽通常够用但无余量。调大不额外花钱（只按实际输出计费）。",
+    "judge_max_output_tokens": 768,
+    "judge_max_output_tokens_note": "★ 风险判定（裁决层）专用上限，2026-10-15 修复。原值硬编码 128，实测风险提示词推理链需 350–500 token，128 会被推理链吃光 → 正文空串 → finish_reason=length → JSON 解析失败 → **正常提问被静默误判为软拦截**（实测「这个参数怎么设置？」中招）。768 留约 2 倍余量。低于 384 会在启动时告警。",
+    "reasoning_model": true,
+    "reasoning_model_note": "当前模型会先输出 reasoning_content 再给正文，推理 token 计入 max_tokens。任何新增的 API 调用都必须给推理链留出余量，否则会拿到空正文。",
+    "timeout_ms": 40000,
+    "probe_timeout_ms": 20000,
+    "max_retries": 3,
+    "style": "轻松、口语、简短，像真人随手回复，不堆敬语、不用客服腔",
+    "prompt_reply_file": "config/prompt-reply.md",
+    "prompt_risk_file": "config/prompt-risk.md",
+    "price_per_1m": {
+      "input_cache_hit_per_1m": 0.0028,
+      "input_cache_miss_per_1m": 0.14,
+      "output_per_1m": 0.28,
+      "usd_to_cny": 7.2,
+      "note": "DeepSeek V4-Flash 公开单价（美元/百万 token），仅用于估算，以官方账单为准"
+    }
+  },
+  "logging": {
+    "log_every_run": true,
+    "log_blocked_items": true,
+    "log_fields": [
+      "time",
+      "comment_id",
+      "comment_text",
+      "action",
+      "reply_text",
+      "block_reason",
+      "result"
+    ]
+  },
+  "no_reply_rules": {
+    "note": "自定义「不回复」规则。关键词命中即跳过该评论（不调模型、不回复）。页面第 3 节「自定义不回复规则」增删改，AI 只负责把一句话变成关键词。",
+    "updated": "2026-10-19 13:04",
+    "items": []
+  }
+}

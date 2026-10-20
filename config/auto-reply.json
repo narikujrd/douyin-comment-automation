@@ -1,0 +1,10 @@
+{
+  "enabled": false,
+  "intervalMinutes": 10,
+  "headless": true,
+  "schedule": {
+    "enabled": false,
+    "start": "08:00",
+    "end": "23:00"
+  }
+}

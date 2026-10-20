@@ -1,0 +1,3634 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>抖音评论自动回复 · 控制台</title>
+<style>
+  :root{
+    --bg:#f5f6f8; --card:#ffffff; --line:#e4e6eb; --line-soft:#f0f1f3;
+    --text:#1c1e21; --muted:#6b7280; --brand:#2563eb; --brand-soft:#eff4ff;
+    --ok:#0d9f6e; --ok-soft:#e8f7f1; --warn:#b45309; --warn-soft:#fef4e6;
+    --bad:#d92c2c; --bad-soft:#fdecec; --radius:12px;
+    --mono:ui-monospace,"Cascadia Mono","Consolas","Microsoft YaHei",monospace;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font:14px/1.65 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+  }
+  .wrap{max-width:1000px;margin:0 auto;padding:28px 20px 80px}
+  header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:6px}
+  h1{font-size:21px;margin:0 0 4px}
+  .sub{color:var(--muted);font-size:13px}
+  .local-tag{font-size:12px;color:var(--ok);background:var(--ok-soft);border:1px solid #cdece0;padding:3px 9px;border-radius:20px}
+
+  /* 右上角设置：四项运行状态收进浮层，按钮上的点负责「一眼看出有没有毛病」 */
+  .top-right{position:relative;display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+  .settings-btn{display:inline-flex;align-items:center;gap:7px;font-size:13px;padding:6px 13px}
+  .settings-btn .dot{margin-right:1px}
+  .settings-btn.attention{border-color:#f0c4c4;color:var(--bad);background:var(--bad-soft)}
+  .settings-panel{
+    position:absolute;right:0;top:calc(100% + 10px);z-index:60;
+    width:400px;max-width:calc(100vw - 36px);
+    max-height:calc(100vh - 96px);overflow:auto;
+    background:#fff;border:1px solid var(--line);border-radius:12px;
+    box-shadow:0 14px 34px rgba(15,23,42,.16);
+    padding:14px 16px 12px;
+  }
+  .settings-panel-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px}
+  .settings-panel-h b{font-size:13.5px}
+  .setrow{display:flex;align-items:flex-start;gap:9px;padding:9px 0;border-bottom:1px solid var(--line-soft)}
+  .setrow:last-of-type{border-bottom:none}
+  .setrow > .dot{margin-top:7px}
+  .setrow-main{flex:1;min-width:0}
+  .setrow-main b{display:block;font-size:13px;font-weight:600}
+  .setrow-main small{display:block;color:var(--muted);font-size:12px;line-height:1.5;word-break:break-word}
+  .setrow > button{flex:none;margin-top:2px}
+  .settings-foot{display:flex;gap:9px;align-items:center;margin-top:10px;padding-top:11px;border-top:1px solid var(--line-soft)}
+
+  /* 开源版：风险声明横幅 + 设置面板底部的「使用指南 / 作者」入口 */
+  .riskband{display:flex;gap:11px;align-items:flex-start;background:#fff5f5;border:1px solid #f3c9c9;
+    border-left:5px solid var(--bad);border-radius:10px;padding:11px 15px;margin:0 0 18px;
+    font-size:12.5px;line-height:1.62;color:#7c1d1d}
+  .riskband .rb-ico{flex:none;width:19px;height:19px;border-radius:50%;background:var(--bad);color:#fff;
+    font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px}
+  .riskband b{color:var(--bad)}
+  .riskband a{color:#a32424;font-weight:600;white-space:nowrap}
+  .settings-about{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    margin-top:9px;padding-top:9px;border-top:1px solid var(--line-soft);font-size:12px;color:var(--muted)}
+  .settings-about a{color:var(--brand);text-decoration:none}
+  .settings-about a:hover{text-decoration:underline}
+
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex:none}
+  .dot.ok{background:var(--ok)} .dot.bad{background:var(--bad)}
+  /* 今日概览条：一行说清「今天干了多少、花了多少」 */
+  .todaybar{
+    display:flex;gap:8px 16px;flex-wrap:wrap;align-items:center;
+    background:var(--card);border:1px solid var(--line);border-radius:10px;
+    padding:9px 14px;margin:16px 0 20px;font-size:12.5px;color:var(--muted);
+  }
+  .todaybar b{color:var(--text);font-weight:600}
+  .todaybar.bad{border-color:#f0c4c4;background:var(--bad-soft);color:var(--bad)}
+  /* 本轮明细：默认只列"为什么没回"，点开看具体是谁 */
+  .lrBox{margin-top:16px;border-top:1px solid var(--line-soft);padding-top:14px}
+  .lrHead{font-size:12.5px;color:var(--muted);margin-bottom:8px}
+  .lrGroup{border:1px solid var(--line);border-radius:9px;padding:8px 12px;margin-bottom:8px;background:#fcfcfd}
+  .lrGroup summary{cursor:pointer;font-size:12.5px}
+  .lrGroup ul{margin:8px 0 2px;padding-left:18px;font-size:12px;color:var(--muted);line-height:1.9}
+  /* 第 3 节：话术编辑器 */
+  .riskEdit{margin-top:18px;border-top:1px solid var(--line-soft);padding-top:16px}
+  .riskEditH{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:4px}
+  .rEditRole{border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:10px;background:#fcfcfd}
+  .rEditRole>summary{cursor:pointer;font-size:13.5px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .rEditRole .rWeightWrap{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted)}
+  .rEditRole .rWeightWrap input{width:64px;padding:4px 8px;font-size:12.5px}
+  .rEditPools{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+  @media (max-width:840px){.rEditPools{grid-template-columns:1fr}}
+  .rEditPool label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+  .rEditPool textarea{min-height:96px;font-family:var(--mono);font-size:12px;line-height:1.7}
+  .rEditPool .cnt{float:right;font-size:11.5px;color:var(--muted)}
+  .riskAddRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0 4px;padding:10px 12px;background:#f7f9fc;border:1px dashed var(--line);border-radius:9px}
+  .riskAddRow input{max-width:260px;padding:6px 10px;font-size:13px}
+  .rEditRole .rDel{margin-left:6px}
+  .rAiBar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0 2px}
+  .rAiBar input{flex:1;min-width:240px;padding:6px 10px;font-size:12.5px}
+  .rAiBar .rAiMsg{font-size:12px}
+  /* 风险人设库：两块板 */
+  .riskLib{margin-top:16px;border:1px solid var(--line);border-radius:11px;padding:14px 16px;background:#fcfcfd}
+  .riskLibH{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:2px}
+  .rBoardT{display:flex;align-items:baseline;gap:8px;font-size:12.5px;font-weight:500;color:var(--text);
+    margin:16px 0 8px;padding-bottom:6px;border-bottom:1px dashed var(--line-soft)}
+  .rBoardT .kv{font-weight:400}
+  .rPend{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border:1px dashed var(--line);border-radius:9px;
+    padding:9px 13px;margin-bottom:8px;background:#fff}
+  .rPend b{font-size:13px}
+  .rPend .rPendMsg{font-size:12px;color:var(--muted);margin-left:auto}
+  .rPend .rPendMsg.bad{color:var(--bad)}
+  .rPend .rPendMsg.ok{color:var(--ok)}
+  .rOn{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:var(--muted);cursor:pointer}
+  .rOn input{margin:0}
+  .rOff{opacity:.62}
+  .rEmpty{border:1px dashed var(--line);border-radius:9px;padding:10px 13px;font-size:12.5px;color:var(--muted)}
+  /* 第 4 节：不回复规则（C-38） */
+  .nrGrid{display:grid;grid-template-columns:1fr 1fr;gap:0 22px}
+  .nrGrid .toggle{margin-bottom:7px}
+  @media (max-width:760px){.nrGrid{grid-template-columns:1fr}}
+  .nrHead{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap}
+  .nrPanel{margin-top:12px;padding:14px 16px;background:#f7f9fc;border:1px dashed var(--line);border-radius:10px}
+  .nrDraft{margin-top:14px;padding-top:12px;border-top:1px solid var(--line-soft)}
+  .nrCard{border:1px solid var(--line);border-radius:10px;padding:10px 13px;margin-top:10px;background:#fcfcfd}
+  .nrCard.rOff{opacity:.62}
+  .nrCardMain{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .nrCardMain b{font-size:13.5px}
+  .nrTag{font-size:10.5px;line-height:16px;padding:0 6px;border-radius:20px;background:var(--ok-soft);color:var(--ok)}
+  .nrDesc{font-size:12.5px;color:var(--muted);margin-top:3px}
+  .nrWords{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .nrWord{font-size:11.5px;padding:1px 7px;border-radius:20px;background:var(--brand-soft);color:var(--brand);font-family:var(--mono)}
+  .nrWord.regex{background:var(--warn-soft);color:var(--warn)}
+  .nrCardFoot{display:flex;gap:14px;margin-top:9px}
+  .linkbtn.danger-link{color:var(--bad)}
+  .nrThread{margin-top:14px;padding-top:12px;border-top:1px solid var(--line-soft)}
+  /* 密钥面板：默认收起，点 chip 里的「更换」展开 */
+  .keypanel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;margin:-10px 0 20px}
+  .keypanel-h{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px}
+  .keypanel code{background:var(--line-soft);padding:1px 5px;border-radius:4px;font-family:var(--mono);font-size:11.5px}
+  .linkbtn{
+    background:none;border:0;padding:0 0 0 2px;font:inherit;font-size:12px;color:var(--brand);
+    cursor:pointer;text-decoration:underline;text-underline-offset:2px;
+  }
+  .linkbtn:hover{background:none;border:0}
+
+  section{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px 22px;margin-bottom:16px}
+  section > h2{font-size:15px;margin:0 0 4px;display:flex;align-items:center;gap:9px;cursor:pointer;user-select:none}
+  /* 设置类章节（人设/规则/试一句/风险）默认收起：整页 5800px 里有 3800px 是它们，
+     日常真正要看的只有「范围、作品、跑一轮、自动回复、待办」。点标题随时展开，选择记在本地。 */
+  section > h2 .chev{margin-left:auto;font-size:10px;color:var(--muted);transition:transform .15s}
+  section.collapsed > h2{margin-bottom:0}
+  section.collapsed > h2 .chev{transform:rotate(-90deg)}
+  section.collapsed > *:not(h2){display:none !important}
+  .num{display:inline-flex;align-items:center;justify-content:center;width:21px;height:21px;border-radius:6px;background:var(--brand-soft);color:var(--brand);font-size:12px;font-weight:600;flex:none}
+  .hint{color:var(--muted);font-size:12.5px;margin:0 0 16px}
+  h3{font-size:13px;margin:22px 0 10px;color:#374151}
+  h3:first-of-type{margin-top:6px}
+
+  label{display:block;font-size:13px;margin-bottom:5px;color:#374151}
+  .field{margin-bottom:16px}
+  .field .note{color:var(--muted);font-size:12px;margin-top:5px}
+  input[type=text],input[type=number],input[type=password],textarea,select{
+    width:100%;padding:8px 11px;border:1px solid var(--line);border-radius:8px;
+    font:inherit;background:#fff;color:var(--text);
+  }
+  textarea{resize:vertical;min-height:64px;line-height:1.6}
+  input:focus,textarea:focus,select:focus{outline:2px solid #c7d9ff;border-color:var(--brand)}
+  .row{display:flex;gap:14px;flex-wrap:wrap}
+  .row > .field{flex:1 1 200px}
+  .row-3 > .field{flex:1 1 150px}
+
+  button{
+    font:inherit;padding:8px 16px;border-radius:8px;border:1px solid var(--line);
+    background:#fff;color:var(--text);cursor:pointer;transition:.15s;
+  }
+  button:hover{border-color:#c9ccd2;background:#fafbfc}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  button.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+  button.primary:hover{background:#1d4ed8;border-color:#1d4ed8}
+  button.danger{background:#fff;border-color:#f0c4c4;color:var(--bad)}
+  button.danger:hover{background:var(--bad-soft)}
+  button.sm{padding:5px 11px;font-size:12.5px}
+  .actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:6px}
+
+  .scope-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:11px;margin-bottom:6px}
+  .scope-card{border:1px solid var(--line);border-radius:10px;padding:13px 15px;cursor:pointer;transition:.15s;background:#fff}
+  .scope-card:hover{border-color:#c9ccd2}
+  .scope-card.on{border-color:var(--brand);background:var(--brand-soft);box-shadow:0 0 0 1px var(--brand) inset}
+  .scope-card b{display:block;font-size:13.5px;margin-bottom:3px}
+  .scope-card span{color:var(--muted);font-size:12px}
+
+  /* 同一节里的第二块（如「范围 + 作品列表」）：用虚线分隔，避免又拆成一节 */
+  .subblock{margin-top:18px;padding-top:16px;border-top:1px dashed var(--line)}
+  .subblock-h{font-size:13.5px;font-weight:600;color:var(--text);margin-bottom:6px}
+
+  .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:14px 0 10px}
+  .toolbar input[type=text]{flex:1 1 200px;max-width:280px}
+  .count{color:var(--muted);font-size:12.5px}
+
+  .works{border:1px solid var(--line);border-radius:10px;max-height:460px;overflow:auto}
+  .work{padding:10px 14px;border-bottom:1px solid var(--line-soft)}
+  .work:last-child{border-bottom:none}
+  .work:hover{background:#fafbfc}
+  .work-main{display:flex;align-items:flex-start;gap:11px;cursor:pointer}
+  .work input[type=checkbox]{margin-top:3px;width:16px;height:16px;accent-color:var(--brand);flex:none;cursor:pointer}
+  .work .t{font-size:13.5px;word-break:break-all}
+  .work .m{color:var(--muted);font-size:12px;margin-top:2px}
+  .work-ctx{display:flex;align-items:center;gap:8px;margin-top:7px;padding-left:27px}
+  .work-ctx input{flex:1;font-size:12.5px;padding:5px 9px}
+  .ctx-tag{font-size:11px;padding:1px 7px;border-radius:20px;background:var(--line-soft);color:var(--muted);flex:none;white-space:nowrap}
+  .ctx-tag.on{background:var(--ok-soft);color:var(--ok)}
+  .ctx-tag.pending{background:var(--warn-soft);color:var(--warn)}
+  .ctx-tag.err{background:#fdecec;color:#c0392b}
+  .badge{display:inline-block;font-size:11px;padding:1px 7px;border-radius:20px;background:var(--warn-soft);color:var(--warn);margin-left:7px;vertical-align:1px}
+  .badge.new{background:var(--ok-soft);color:var(--ok)}
+
+  /* ---------- 人设区（C-24 重做：左边人设库 + 右边编辑器） ---------- */
+  .psona{display:grid;grid-template-columns:246px minmax(0,1fr);gap:22px;align-items:start}
+  .psona-side{position:sticky;top:8px;background:var(--line-soft);border:1px solid var(--line);border-radius:10px;padding:9px;display:flex;flex-direction:column;gap:6px}
+  .psona-side-h{display:flex;align-items:baseline;justify-content:space-between;padding:0 3px 2px}
+  .psona-side-h b{font-size:12.5px;color:#374151}
+  .plist{display:flex;flex-direction:column;gap:2px;max-height:min(432px,calc(100vh - 250px));overflow:auto}
+  .pcard{display:flex;align-items:center;gap:6px;padding:6px 9px;border-radius:7px;border:1px solid transparent;cursor:pointer;transition:.12s;min-width:0}
+  .pcard:hover{background:#fff;border-color:var(--line)}
+  .pcard.on{background:#fff;border-color:var(--brand);box-shadow:0 1px 2px rgba(37,99,235,.1)}
+  .pcard-name{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+  .pcard.on .pcard-name{font-weight:600}
+  .pTag{font-size:10.5px;line-height:16px;padding:0 5px;border-radius:20px;background:#e9ebef;color:var(--muted);white-space:nowrap;flex:none}
+  .pTag.fixed{background:#e6efff;color:var(--brand)}
+  .pTag.pool{background:var(--ok-soft);color:var(--ok)}
+  .pcard-empty{padding:14px 6px;text-align:center;color:var(--muted);font-size:12px;line-height:1.6}
+  .psona-side-f{display:flex;gap:6px;padding-top:7px;border-top:1px solid var(--line)}
+  .psona-side-f button{flex:1;padding:5px 4px;font-size:12px;background:#fff}
+  .psona-side-f button.on{border-color:var(--brand);color:var(--brand);background:var(--brand-soft)}
+
+  .psona-main{min-width:0}
+  .psona-head{position:sticky;top:0;z-index:6;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;
+    background:var(--card);padding:0 0 11px;margin-bottom:12px;border-bottom:1px solid var(--line-soft)}
+  .psona-id{min-width:0;flex:1 1 200px}
+  .psona-name{font-size:15.5px;font-weight:600;line-height:1.4;word-break:break-word}
+  .psona-tag{color:var(--muted);font-size:12px;margin-top:2px;word-break:break-word}
+  .psona-ops{display:flex;align-items:center;gap:6px;flex:none;padding-top:2px}
+  .psona-ops .dirty{font-size:12px;color:var(--warn)}
+  .psona-ops button{padding:5px 11px;font-size:12.5px}
+
+  .fsec{padding-top:16px;margin-top:16px;border-top:1px dashed var(--line-soft)}
+  .fsec:first-child{padding-top:0;margin-top:0;border-top:none}
+  .fsec-h{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:#374151;margin-bottom:11px}
+  .fsec-h::before{content:"";width:3px;height:13px;border-radius:2px;background:var(--brand);flex:none}
+  .fsec-h .unit{font-weight:400;color:var(--muted);font-size:11.5px}
+  .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
+  .fgrid-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .fgrid > .field{min-width:0}
+  /* 人设里的文本域按内容高度走（autoGrow），短内容不要留一大片空白 */
+  #personaForm textarea{min-height:44px}
+  label .unit{color:var(--muted);font-weight:400;font-size:11.5px;margin-left:6px}
+  .switchline{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin:2px 0 0}
+  .switchline input{width:16px;height:16px;accent-color:var(--brand);flex:none;margin:0}
+  .switchline em{font-style:normal;color:var(--muted);font-size:12px}
+
+  /* 高级设置：默认折叠成一行。禁用词 / 额外要求 / 签名这些「一般不碰」的项塞进去，
+     不占版面；展开后仍是原来的表单控件，collectPersona 照旧按 id 取值 */
+  .advbox > summary{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12.5px;font-weight:600;color:#6b7280;list-style:none}
+  .advbox > summary::-webkit-details-marker{display:none}
+  .advbox > summary::before{content:"▸";font-size:11px;color:var(--muted);flex:none;transition:transform .12s}
+  .advbox[open] > summary::before{content:"▾"}
+  .advbox > summary:hover{color:var(--brand)}
+  .advbox > summary .unit{font-weight:400;color:var(--muted);font-size:11.5px}
+  .advbox .advbody{padding-top:13px}
+
+  /* C-47：抽屉里的「通用兜底话术」不再折叠，直接列出 + 可就地编辑
+     （作者：折起来看不见内容，觉得不合适也没法改） */
+  .hNo{font-style:normal;color:var(--muted);font-size:11px;margin-right:6px;min-width:14px;display:inline-block;text-align:right}
+  .hTa{min-height:120px;max-height:340px;resize:vertical;line-height:1.7;font-size:12.5px}
+  .hBtns{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:9px}
+
+  .policyBox > summary{font-size:13px;color:#374151}
+  .policyBox > summary .unit{margin-left:2px}
+  .policyBox .advbody{padding-top:11px}
+  .policyBox{margin-top:10px;padding-top:0;border-top:none}
+
+  /* 一句话生成（默认收起，点左栏「AI 生成」展开） */
+  .ai-panel{border:1px solid #d8e3ff;background:#f7faff;border-radius:10px;padding:12px 14px;margin-bottom:16px}
+  .ai-panel[hidden]{display:none}
+  .ai-panel-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
+  .ai-panel-h b{font-size:12.5px;color:#374151}
+  .ai-panel-row{display:flex;gap:8px}
+  .ai-panel-row input{flex:1;min-width:0}
+  .ai-panel-row button{flex:none}
+  .ai-panel .note{color:var(--muted);font-size:11.5px;margin-top:7px;line-height:1.55}
+  .linkbtn{border:none;background:none;padding:0;color:var(--muted);font-size:12px;cursor:pointer}
+  .linkbtn:hover{color:var(--brand);background:none;border:none}
+  .ai-panel .warnbox,.ai-panel .errbox{margin-top:10px}
+
+  /* 回复时用哪套 */
+  .rotbox{border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-top:22px;background:#fbfcfd}
+  .rotbox-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:11px}
+  .rotbox-h b{font-size:12.5px;color:#374151}
+  .rotbox-h .kv{font-size:11.5px}
+  .rotbox-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .seg{display:inline-flex;background:#eceef1;border-radius:8px;padding:3px;gap:2px;flex:none}
+  .seg label{position:relative;margin:0}
+  .seg input{position:absolute;opacity:0;width:0;height:0;pointer-events:none}
+  .seg span{display:block;padding:4px 14px;border-radius:6px;font-size:12.5px;color:var(--muted);cursor:pointer;transition:.12s;white-space:nowrap}
+  .seg input:checked + span{background:#fff;color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.09);font-weight:500}
+  .rot-single{display:flex;align-items:center;gap:8px;flex:1 1 200px;min-width:0}
+  .rot-single select{flex:1;min-width:0}
+  .rot-pool{margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)}
+  .rot-pool-h{display:block;font-size:12px;color:var(--muted);margin-bottom:8px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .pchip{display:inline-flex;align-items:center;padding:4px 11px;border:1px solid var(--line);border-radius:20px;font-size:12.5px;cursor:pointer;background:#fff;margin:0;transition:.12s;user-select:none}
+  .pchip:hover{border-color:#c9ccd2}
+  .pchip input{display:none}
+  .pchip:has(input:checked){border-color:var(--brand);background:var(--brand-soft);color:var(--brand)}
+  .pchip:has(input:checked)::before{content:"✓";margin-right:4px;font-size:11px}
+  .rotbox .warnbox{margin-top:10px}
+  .rotbox .dirty{font-size:12px;color:var(--warn)}
+
+  /* 合作待办（C-25） */
+  .coop{border:1px solid var(--line);border-radius:9px;padding:11px 13px;margin-bottom:8px;background:#fff}
+  .coop.done{background:#fafbfc;border-color:var(--line-soft)}
+  .coop-h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:5px}
+  .coop-h b{font-size:13px}
+  .coop-h .kv{font-size:11.5px}
+  .coop-h button{margin-left:auto;align-self:center}
+  .coop-c{font-size:13px;line-height:1.6;word-break:break-word;margin-bottom:4px}
+  .coop.done .coop-c{color:var(--muted)}
+  .coop-r{font-size:12px;color:var(--muted);word-break:break-word}
+  .coop-r b{color:var(--ok);font-weight:500}
+  /* C-50：勾「我已回复」即移除 */
+  .coop-f{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:6px}
+  .coop-check{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text);cursor:pointer;padding:4px 10px;border:1px solid var(--line);border-radius:7px;background:#fff;flex:none}
+  .coop-check:hover{border-color:var(--brand);color:var(--brand)}
+  .coop-check input{margin:0;cursor:pointer}
+
+  /* 风险处置策略（C-26） */
+  .rTable{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:14px;background:#fff}
+  /* C-43：第三列要放「话术 / 反向关键词」按钮，132px 装不下会把说明文字挤到一起 */
+  .rHead,.rRow{display:grid;grid-template-columns:170px 186px 1fr;gap:12px;padding:9px 13px;align-items:start}
+  .rHead{background:var(--line-soft);font-size:12px;color:var(--muted);font-weight:600}
+  .rRow{border-top:1px solid var(--line);font-size:12.5px}
+  .rRow.skip{background:#fffbfb}
+  .rName{font-weight:600;line-height:1.5}
+  .rNote{color:var(--muted);line-height:1.55;word-break:break-word}
+  .rTag{display:inline-block;font-size:11.5px;padding:1px 8px;border-radius:20px;margin-right:5px;white-space:nowrap}
+  .rTag.bad{background:var(--bad-soft);color:var(--bad)}
+  .rTag.ok{background:var(--ok-soft);color:var(--ok)}
+  .rPool{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+  /* C-41：第 4 节「每类怎么处理」表 */
+  .hChoice{display:flex;flex-direction:column;gap:3px;font-size:12.5px}
+  .hOpt{display:flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap;color:var(--text)}
+  .hOpt input{margin:0;accent-color:var(--ok);cursor:pointer}
+  /* C-43：每类的「话术 / 反向关键词」抽屉（默认折叠，避免 15 类铺满屏幕） */
+  .hBtn{align-self:flex-start;margin-top:6px;font:inherit;font-size:11.5px;line-height:1.4;padding:3px 9px;border:1px solid var(--line);background:#fff;border-radius:6px;color:var(--muted);cursor:pointer;white-space:nowrap}
+  .hBtn:hover{border-color:var(--ok);color:var(--ok)}
+  .hPanel{grid-column:1/-1;margin-top:9px;padding:11px 13px;border:1px dashed var(--line);border-radius:8px;background:var(--line-soft)}
+  .hPanelH{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;font-weight:600;margin:0 0 7px}
+  .hInput{width:100%;box-sizing:border-box;font:inherit;font-size:12.5px;padding:6px 9px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--text)}
+  .hInput:focus{outline:none;border-color:var(--ok)}
+  .hWho{font-size:11.5px;color:var(--muted);margin:10px 0 4px}
+  .hLines{display:flex;flex-direction:column;gap:3px;max-height:180px;overflow:auto}
+  .hLine{font-size:12px;line-height:1.55;color:var(--text);padding:1px 0 1px 9px;border-left:2px solid var(--line);word-break:break-word}
+  .rCache{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--line-soft)}
+  .rCacheH{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px;flex-wrap:wrap}
+  .rCacheH b{font-size:13px}
+  .rCacheBody{font-size:12.5px;line-height:1.65;color:var(--muted);word-break:break-word}
+  .rCacheBody b{color:var(--text)}
+  /* C-49：缓存搬进右上角设置浮层——400px 宽，别用整块灰底把面板压沉 */
+  .settings-panel .setCache{margin-top:11px;padding:9px 12px;background:transparent;border-style:dashed}
+  .settings-panel .setCache .rCacheH{margin-bottom:3px}
+  .rVoices{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  .rVoice{border:1px solid var(--line);border-radius:20px;padding:4px 13px;font-size:12.5px;background:#fff;line-height:1.7}
+  .rVoice b{font-weight:600}
+  .rVoice span{color:var(--muted);margin-left:3px}
+
+  @media (max-width:840px){
+    .psona{grid-template-columns:1fr;gap:14px}
+    .psona-side{position:static}
+    .plist{display:grid;grid-template-columns:1fr 1fr;gap:3px 6px;max-height:none;overflow:visible}
+    .pcard{max-width:none}
+    .psona-side-f button{flex:0 0 auto;padding:5px 12px}
+  }
+  @media (max-width:560px){
+    .fgrid,.fgrid-3{grid-template-columns:1fr}
+  }
+
+  .toggle{display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:12px}
+  .toggle input{width:16px;height:16px;accent-color:var(--brand)}
+
+  .ex{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+  .ex input{flex:1}
+  .ex .arrow{color:var(--muted);flex:none}
+
+  #previewOut{margin-top:16px}
+  .ctxbox{margin-top:10px;border:1px solid var(--line);border-radius:9px;background:#fafbfc;padding:9px 12px}
+  .ctxbox summary{cursor:pointer;font-size:12.5px;color:var(--muted)}
+  .ctxbox pre{margin:9px 0 0;font-family:var(--mono);font-size:11.5px;line-height:1.65;white-space:pre-wrap;word-break:break-word;color:var(--text)}
+  .bubble{border-radius:12px;padding:12px 15px;font-size:14.5px;line-height:1.7;margin-bottom:14px}
+  .bubble.reply{background:var(--ok-soft);border:1px solid #cdece0}
+  .bubble.skip{background:var(--warn-soft);border:1px solid #f3e0c0}
+  .bubble b{font-size:12px;display:block;margin-bottom:4px;color:var(--muted);font-weight:500}
+  .bubble .txt{font-size:15px;font-weight:500}
+  .steps{list-style:none;padding:0;margin:0}
+  .steps li{display:flex;gap:10px;padding:6px 0;font-size:13px;border-bottom:1px dashed var(--line-soft)}
+  .steps li:last-child{border-bottom:none}
+  .steps .st{color:var(--muted);min-width:190px;flex:none}
+  .steps .rs{color:var(--muted);font-size:12px}
+  .ok-t{color:var(--ok)} .bad-t{color:var(--bad)} .skip-t{color:var(--warn)}
+
+  pre.log{background:#12161c;color:#d7dce3;border-radius:10px;padding:14px 16px;font:12.5px/1.6 var(--mono);
+    max-height:340px;overflow:auto;white-space:pre-wrap;word-break:break-all;margin:14px 0 0}
+  pre.log:empty{display:none}
+
+  .toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,20px);background:#1c1e21;color:#fff;
+    padding:10px 18px;border-radius:9px;font-size:13px;opacity:0;pointer-events:none;transition:.25s;z-index:99;max-width:80vw}
+  .toast.on{opacity:1;transform:translate(-50%,0)}
+  .toast.err{background:var(--bad)}
+  .toast.warn{background:#8a5a00}
+
+  .warnbox{background:var(--warn-soft);border:1px solid #f3e0c0;color:#7a4a06;border-radius:9px;padding:11px 14px;font-size:12.5px;margin-top:12px}
+  .errbox{background:var(--bad-soft);border:1px solid #f0c4c4;color:#8d1f1f;border-radius:9px;padding:11px 14px;font-size:12.5px;margin-top:12px}
+  .errbox ul,.warnbox ul{margin:5px 0 0;padding-left:18px}
+  .divider{height:1px;background:var(--line-soft);margin:20px 0}
+  .kv{color:var(--muted);font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="riskband">
+    <span class="rb-ico">!</span>
+    <div>
+      <b>风险提示：</b>本工具用浏览器自动化操作抖音，属平台未授权手段，可能导致限流、内容降权，<b>严重时账号被封禁</b>；
+      生成的评论会以你的账号名义公开发布。<b>作者不对使用本工具的任何后果负责。</b>
+      <a href="/guide.html#risk" target="_blank" rel="noopener">完整风险与免责声明 &rsaquo;</a>
+    </div>
+  </div>
+
+  <header class="top">
+    <div>
+      <h1 id="appTitle">抖音评论自动回复 · 控制台</h1>
+      <div class="sub">在这里设定：跑哪些作品、机器人是什么性格、回复规则长什么样。</div>
+    </div>
+    <div class="top-right">
+      <span class="local-tag">仅本机可访问</span>
+      <button type="button" class="settings-btn" id="settingsBtn" onclick="toggleSettings()" aria-expanded="false" title="API key、登录状态、浏览器内核、模型">
+        <span class="dot" id="settingsDot"></span>⚙ 设置
+      </button>
+      <div class="settings-panel" id="settingsPanel" hidden>
+        <div class="settings-panel-h">
+          <b>运行设置</b>
+          <button class="sm" type="button" onclick="toggleSettings(false)">关闭</button>
+        </div>
+        <div id="settingsBody"></div>
+        <!-- C-49：原来在第 8 节底部的「已判定不回」缓存，挪到设置浮层里 -->
+        <div class="rCache setCache">
+          <div class="rCacheH">
+            <b>「已判定不回」缓存</b>
+            <button class="sm" type="button" onclick="clearSkipCache()">清空</button>
+          </div>
+          <div class="rCacheBody" id="riskCacheInfo">加载中…</div>
+        </div>
+        <div class="settings-foot">
+          <button class="sm" type="button" onclick="refreshStatusNow(this)" id="recheckBtn">重新检测</button>
+          <span class="kv" id="settingsHint"></span>
+        </div>
+        <div class="settings-about">
+          <a href="/guide.html" target="_blank" rel="noopener">使用指南</a>
+          <a href="https://github.com/narikujrd" target="_blank" rel="noopener" title="作者 GitHub">作者 narikujrd</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="todaybar" id="todayBar"></div>
+
+  <!-- 密钥面板（设置面板里点「更换」展开） -->
+  <div class="keypanel" id="keyPanel" hidden>
+    <div class="keypanel-h">
+      <b>更换 DeepSeek API Key</b>
+      <button class="sm" type="button" onclick="toggleKeyPanel(false)">收起</button>
+    </div>
+    <p class="kv" id="keyNow" style="margin:2px 0 12px"></p>
+    <div class="row" style="align-items:flex-end">
+      <div class="field" style="flex:1 1 420px;margin-bottom:0">
+        <label for="apiKeyInput">新的 key<span class="unit">以 sk- 开头，粘贴后不会显示明文</span></label>
+        <input type="password" id="apiKeyInput" autocomplete="new-password" spellcheck="false"
+               placeholder="sk-..." onkeydown="if(event.key==='Enter')saveApiKey('verify')">
+      </div>
+      <div class="field" style="flex:0 0 auto;margin-bottom:0">
+        <button class="primary" type="button" id="apiKeySaveBtn" onclick="saveApiKey('verify')">保存并验证</button>
+      </div>
+    </div>
+    <div class="actions" style="margin-top:16px">
+      <button class="sm" type="button" onclick="saveApiKey('noverify')">不验证，直接保存</button>
+      <button class="sm danger" type="button" onclick="clearApiKeyFromPanel()">移除已保存的 key</button>
+      <span class="kv" id="apiKeyMsg"></span>
+    </div>
+    <p class="kv" style="margin-top:10px">
+      安全性：只写本机的 <code id="keyFilePath">~/.douyin-automation/secrets.json</code>（在项目目录之外，
+      <code>tool/</code> 下近两百个第三方包扫不到）；写入用 0600 权限；<b>不回显、不进日志、不存浏览器</b>；
+      「保存并验证」会先拿这把 key 请求一次 <code>/models</code>（不花 token），验证不过不会写盘。
+      文件里原有的 <code>base_url</code> / <code>model</code> 会保留。
+    </p>
+  </div>
+  <div id="versionWarn"></div>
+
+  <!-- 扫码登录 / 换账号面板（右上角「⚙ 设置」里点「换号」展开） -->
+  <div class="keypanel" id="loginPanel" hidden>
+    <div class="keypanel-h">
+      <b>抖音扫码登录 · 换账号</b>
+      <button class="sm" type="button" onclick="toggleLoginPanel(false)">收起</button>
+    </div>
+    <p class="kv" id="loginNow" style="margin:2px 0 12px"></p>
+    <div class="actions" style="margin-top:0">
+      <button class="primary" type="button" id="btnLoginOpen" onclick="startLogin(false)">打开登录窗口</button>
+      <button class="sm" type="button" id="btnLoginFresh" onclick="startLogin(true)">换账号（先清空旧登录态）</button>
+      <span class="kv" id="loginMsg"></span>
+    </div>
+    <div id="loginRunning" hidden style="margin-top:14px">
+      <p class="kv" style="margin:0 0 8px">
+        浏览器窗口已经打开 —— 用手机抖音扫码。登录完成后点下面这个按钮，脚本会自己校验并关窗。
+      </p>
+      <div class="actions" style="margin-top:0">
+        <button class="primary" type="button" onclick="doneLogin()">我扫完了</button>
+        <button class="sm danger" type="button" onclick="cancelLoginFlow()">取消</button>
+      </div>
+      <pre class="log" id="loginLog" style="max-height:180px;margin-top:12px"></pre>
+    </div>
+    <p class="kv" style="margin-top:10px">
+      扫码由你本人完成，控制台不接触你的密码和验证码。点「换账号」会先把旧的登录存档<b>改名备份</b>（不是删除），
+      想回滚把 <code>tool/.playwright/douyin-profile.bak-*</code> 改回 <code>douyin-profile</code> 即可；
+      同时把「已判定不回」缓存一起归档 —— 缓存不按账号区分，留着会拿上个号的结论判这个号。
+      登录窗口开着时自动回复会暂停排队，跑一轮也会被拒绝 —— 它们要用同一份浏览器存档。
+    </p>
+  </div>
+
+  <!-- 1. 运行范围 + 作品（合并：范围决定"处理哪一类"，作品清单决定"具体哪几条"） -->
+  <section data-key="works">
+    <h2><span class="num">1</span>运行范围与作品</h2>
+    <p class="hint">决定每次跑一轮时处理哪些作品：<b>先选范围，再勾具体作品</b>。选「按勾选」时，下面作品列表里的勾选才生效。</p>
+
+    <div class="scope-grid" id="scopeGrid"></div>
+    <p class="kv" id="scopeNote"></p>
+
+    <div class="subblock">
+      <div class="subblock-h">作品列表</div>
+      <p class="hint">勾上的作品才会自动回复。<b>每一行下面那格填「这条视频在玩什么梗」</b>——填了它，机器才看得懂评论区：抽象视频下的玩梗不会被当成找茬，真来找事的也照样拦得住。</p>
+      <div class="toolbar">
+        <input type="text" id="workSearch" placeholder="搜索标题…">
+        <button class="sm" onclick="toggleAll(true)">全选</button>
+        <button class="sm" onclick="toggleAll(false)">清空</button>
+        <button class="sm" onclick="refreshWorks()" id="refreshBtn">重新拉取列表</button>
+        <span class="count" id="workCount"></span>
+      </div>
+      <div class="works" id="works"></div>
+    </div>
+  </section>
+
+  <!-- 3. 人设 -->
+  <section id="secPersona" data-key="persona">
+    <h2><span class="num">2</span>机器人人设</h2>
+    <p class="hint">只决定「怎么说」，不影响「该不该说」——风险拦截、字数上限、禁止引流都不受人设左右。风险评论由第 3 节的「风险人设库」单独决定。</p>
+
+    <!-- 一句话生成：默认收起 -->
+    <div class="ai-panel" id="aiPanel" hidden>
+      <div class="ai-panel-h">
+        <b>用一句话写一套新人设</b>
+        <button class="linkbtn" onclick="toggleAiPanel(false)">收起</button>
+      </div>
+      <div class="ai-panel-row">
+        <input type="text" id="aiPersonaDesc" maxlength="120" placeholder="例：一个说话带刺的老程序员，懒得解释，爱阴阳自己">
+        <button class="primary" onclick="generatePersonaByAi()" id="aiGenBtn">生成人设</button>
+      </div>
+      <div class="note">按这句话写出一整人设（定位 / 语气 / 性格 / 口头禅 / 2–3 组示例），存进人设库，不覆盖正在编辑的这套。<b>会尽量还原你描述的样子——颓、丧、毒舌、摆烂都照写，不替你美化成正能量。</b>每次约几分钱。</div>
+      <div id="aiPersonaMsg"></div>
+    </div>
+
+    <div class="psona">
+      <!-- 左：人设库 -->
+      <aside class="psona-side">
+        <div class="psona-side-h">
+          <b>人设库</b>
+          <span class="count" id="personaCount"></span>
+        </div>
+        <div class="plist" id="personaList"></div>
+        <div class="psona-side-f">
+          <button onclick="newPersonaBlank()">＋ 新建</button>
+          <button id="aiToggleBtn" onclick="toggleAiPanel()">✦ AI 生成</button>
+        </div>
+      </aside>
+
+      <!-- 右：编辑当前这套 -->
+      <div class="psona-main">
+        <div class="psona-head">
+          <div class="psona-id">
+            <div class="psona-name" id="editingName">—</div>
+            <div class="psona-tag" id="editingTag"></div>
+          </div>
+          <div class="psona-ops">
+            <span class="dirty" id="personaSaved"></span>
+            <button class="sm" onclick="duplicateCurrentPersona()" title="复制这套人设">复制</button>
+            <button class="sm danger" onclick="deleteCurrentPersona()" title="删除这套人设">删除</button>
+            <button class="primary sm" onclick="savePersona()">保存人设</button>
+          </div>
+        </div>
+
+        <div id="personaMsg"></div>
+
+        <div id="personaForm">
+          <div class="fsec">
+            <div class="fsec-h">基本</div>
+            <div class="fgrid">
+              <div class="field">
+                <label for="pName">名称<span class="unit">≤20 字，只在控制台里用</span></label>
+                <input type="text" id="pName" maxlength="20" placeholder="例：毒舌健身老哥">
+              </div>
+              <div class="field">
+                <label for="pTagline">一句话说明<span class="unit">可留空</span></label>
+                <input type="text" id="pTagline" maxlength="40" placeholder="例：毒舌但不伤人，怼的是事不是人">
+              </div>
+            </div>
+            <div class="field">
+              <label for="pIdentity">账号定位</label>
+              <input type="text" id="pIdentity" placeholder="例：个人创作者，内容偏健身和游戏日常">
+            </div>
+            <div class="fgrid">
+              <div class="field">
+                <label for="pSelf">自称</label>
+                <input type="text" id="pSelf" placeholder="我">
+              </div>
+              <div class="field">
+                <label for="pAudience">怎么称呼观众</label>
+                <input type="text" id="pAudience" placeholder="留空 = 不称呼">
+              </div>
+            </div>
+            <label class="switchline">
+              <input type="checkbox" id="pEnabled">
+              <span>启用人设</span><em>关掉则退回通用的「轻松口语」风格</em>
+            </label>
+          </div>
+
+          <div class="fsec">
+            <div class="fsec-h">语气</div>
+            <div class="field">
+              <label for="pTone">语气基调</label>
+              <textarea id="pTone" rows="3" placeholder="轻松、口语、简短，像真人随手回复，不堆敬语、不用客服腔"></textarea>
+            </div>
+            <div class="fgrid">
+              <div class="field">
+                <label for="pTraits">性格特点<span class="unit">一行一个</span></label>
+                <textarea id="pTraits" rows="3" placeholder="接地气&#10;不说教"></textarea>
+              </div>
+              <div class="field">
+                <label for="pCatch">口头禅<span class="unit">一行一个，偶尔用</span></label>
+                <textarea id="pCatch" rows="3" placeholder="懂的都懂"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <details class="fsec advbox" data-persist="personaAdv">
+            <summary>高级设置<span class="unit">已内置防客服腔 + 安全边界，一般不用动</span></summary>
+            <div class="advbody">
+              <div class="field">
+                <label for="pSignature">末尾签名<span class="unit">留空 = 不带</span></label>
+                <input type="text" id="pSignature" placeholder="留空 = 不带">
+              </div>
+              <div class="fgrid">
+                <div class="field">
+                  <label for="pBanned">绝对不要出现的词<span class="unit">一行一个，命中即重写</span></label>
+                  <textarea id="pBanned" rows="3" placeholder="亲&#10;客服&#10;您好，很高兴为您服务"></textarea>
+                </div>
+                <div class="field">
+                  <label for="pRules">额外要求<span class="unit">一行一条</span></label>
+                  <textarea id="pRules" rows="3" placeholder="遇到自己也拿不准的事就直说，别硬答"></textarea>
+                </div>
+              </div>
+            </div>
+          </details>
+
+          <div class="fsec">
+            <div class="fsec-h">语气示例<span class="unit">最管用的一项，2–3 条就够</span></div>
+            <div id="exList"></div>
+            <button class="sm" onclick="addExample()">＋ 加一条示例</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 回复时用哪套 -->
+    <div class="rotbox">
+      <div class="rotbox-h">
+        <b>回复时用哪套</b>
+        <span class="kv">随机切换时，同一条评论永远用同一套（重试、重发都不换人）</span>
+      </div>
+      <div class="rotbox-row">
+        <div class="seg">
+          <label><input type="radio" name="rotMode" id="rotSingle" onchange="applyRotationVisibility();refreshRotationDirty()"><span>固定一套</span></label>
+          <label><input type="radio" name="rotMode" id="rotRandom" onchange="applyRotationVisibility();refreshRotationDirty()"><span>多套随机</span></label>
+        </div>
+        <div class="rot-single" id="rotSingleWrap">
+          <select id="rotSingleSel" onchange="refreshRotationDirty()"></select>
+        </div>
+        <button class="sm" onclick="saveRotation()">保存</button>
+        <span class="dirty" id="rotDirty" style="display:none">● 有未保存的改动</span>
+        <span class="kv" id="rotSaved"></span>
+      </div>
+      <div class="rot-pool" id="rotPoolWrap">
+        <span class="rot-pool-h">随机池（点一下加入或移出，至少 1 套；勾 2 套以上才有变化）</span>
+        <div class="chips" id="rotPool"></div>
+      </div>
+      <div id="rotMsg"></div>
+    </div>
+  </section>
+
+  <!-- 3. 风险回复人设（原第 8 节上半部分，2026-10-19 移到人设下面） -->
+  <section data-key="risk">
+    <h2><span class="num">3</span>风险回复人设</h2>
+    <p class="hint">
+      这一节只管<b>风险类评论由谁来说</b>；<b>哪类回不回、用不用模板回，在下一节「回复规则」里设</b>，这里不重复。
+      风险回复用的是<b>下方「风险人设库」里勾了负责的人设</b>，按占比抽一个来回，<b>跟第 2 节「回复用哪套人设」互相独立</b>（那条链路只管普通回复）。
+      同一条评论永远同一个人格回，而且<b>不花 token</b>。
+    </p>
+    <div id="riskVoices" class="rVoices"></div>
+
+    <!-- 风险人设库：链路1（C-36） -->
+    <div class="riskLib" id="riskLib">
+      <div class="riskLibH">
+        <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+          <b>风险人设库</b>
+          <span class="kv" id="riskLibSum">加载中…</span>
+        </div>
+        <span style="display:flex;gap:8px;align-items:center">
+          <button class="sm" onclick="equalizeRiskWeights()" title="把勾选负责的人设重新平均分配占比">平均分配</button>
+          <button class="primary sm" onclick="saveRiskLib()" id="riskLibSaveBtn">保存占比</button>
+        </span>
+      </div>
+      <p class="kv" style="margin:2px 0 10px">
+        从上到下就是这条链路：<b>人设库</b> → 这里分成「有话术 / 未生成话术」→ 决定谁负责、各占多少 → 按占比回风险评论。
+        没生成话术的人设<b>不会自动花钱</b>，要你自己点「生成话术」。话术按人设口吻写，每行 4–40 字，不能出现联系方式 / 网址 / 红线词。
+      </p>
+
+      <div class="rBoardT">有话术的人设<span class="kv" id="riskReadyCount"></span></div>
+      <div id="riskReady"><p class="kv">加载中…</p></div>
+
+      <div class="rBoardT">未生成话术的人设<span class="kv" id="riskPendingCount"></span></div>
+      <div id="riskPending"><p class="kv">加载中…</p></div>
+
+      <div id="riskLegacy" hidden></div>
+      <div id="riskLibMsg" class="kv" style="margin-top:8px"></div>
+    </div>
+  </section>
+
+  <!-- 4. 规则 -->
+  <section data-key="rules">
+    <h2><span class="num">4</span>回复规则</h2>
+    <p class="hint">这里决定三件事：<b>每类评论怎么处理</b>（不回复 / 模板回复）、<b>哪些自定义规则不回</b>、<b>一轮最多回多少</b>。具体怎么说由第 2 节的人设决定。</p>
+
+    <details class="fsec advbox policyBox" id="policyBox" data-persist="policyBox">
+      <summary>各类评论怎么处理<span class="unit" id="policySummary">每类二选一：不回复 / 模板回复</span></summary>
+      <div class="advbody">
+        <p class="kv" style="margin:0 0 10px">
+          每一类都自己选：<b>不回复</b>，或<b>模板回复</b>（用固定话术回一句，不调模型、不花钱、不顺着对方说）。
+          <b>政治敏感</b>、<b>涉及未成年人</b>同样可以选，默认是「不回复」—— 这两类回了容易被平台当作给内容加权，不确定就别动。
+          点每类的「<b>话术 / 反向关键词</b>」可以看这一类的固定话术，也可以配<b>反向关键词</b>（评论里只出现这些词、没有本类的风险词时，按可以回复处理）。
+          这里只管「回不回 / 用什么方式回」，具体口吻由第 2 节的人设决定；<b>安全闸门不在这里控制</b>。
+        </p>
+        <div id="policyList"></div>
+      </div>
+    </details>
+
+    <div class="subblock">
+      <div class="nrHead">
+        <div>
+          <div class="subblock-h">自定义不回复规则<span class="badge" id="nrCount" hidden></span></div>
+          <p class="kv" style="margin:2px 0 0">
+            内置类型不够用时，用一句话说清哪类评论不回，AI 把它变成关键词。
+            之后每条评论只做本地匹配，<b>不再调模型、不花钱</b>。
+          </p>
+        </div>
+        <button class="sm" type="button" onclick="openNrPanel()" id="nrAddBtn">＋ 新增规则</button>
+      </div>
+      <div id="noReplyList"></div>
+
+      <div class="nrPanel" id="nrPanel" hidden>
+        <div class="field" style="margin-bottom:10px">
+          <label for="nrPrompt">用一句话描述：什么评论不回复</label>
+          <textarea id="nrPrompt" maxlength="200" placeholder="例：问价格、要优惠、问能不能便宜点的不回；或者：同行来踩、说别家更好的不回"></textarea>
+        </div>
+        <div class="actions" style="margin-top:0">
+          <button class="primary sm" type="button" onclick="genNrRule()" id="nrGenBtn">AI 生成规则</button>
+          <button class="sm" type="button" onclick="manualNrDraft()">手动填写</button>
+          <button class="sm" type="button" onclick="closeNrPanel()">取消</button>
+          <span class="kv" id="nrGenMsg"></span>
+        </div>
+        <div class="nrDraft" id="nrDraft" hidden>
+          <div class="row">
+            <div class="field"><label for="nrName">规则名</label><input type="text" id="nrName" maxlength="20"></div>
+            <div class="field" style="flex:2 1 320px"><label for="nrDesc">一句话说明（可选）</label><input type="text" id="nrDesc" maxlength="60"></div>
+          </div>
+          <div class="field">
+            <label for="nrKeywords">关键词（一行一个，也可用逗号分隔）</label>
+            <textarea id="nrKeywords" spellcheck="false"></textarea>
+            <div class="note">命中任意一个就跳过这条评论。词别太短、别太宽泛（像「你」「什么」会把整片评论吞掉）。</div>
+          </div>
+          <div class="field">
+            <label for="nrRegex">正则（可选，能写关键词就别用它）</label>
+            <input type="text" id="nrRegex" maxlength="160" placeholder="例：第[0-9]+集">
+          </div>
+          <div class="actions" style="margin-top:0">
+            <button class="primary sm" type="button" onclick="commitNrRule()" id="nrCommitBtn">加入列表</button>
+            <button class="sm" type="button" onclick="resetNrDraft()">清空重填</button>
+            <span class="kv" id="nrDraftMsg"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="subblock">
+      <div class="subblock-h">回复的数量与长度</div>
+      <p class="kv" style="margin:2px 0 12px">这几项一起决定「一轮回多少、每条多长、同一句话最多回几次」。改完点最下面「保存规则」，下一轮生效。</p>
+      <div class="row">
+        <div class="field">
+          <label for="rMax">回复字数上限</label>
+          <input type="number" id="rMax" min="4" max="400">
+          <div class="note" id="rMaxNote"></div>
+        </div>
+        <div class="field">
+          <label for="rMin">字数下限</label>
+          <input type="number" id="rMin" min="1" max="60">
+          <div class="note">低于此长度的回复不要。口语短句很正常，别设太大。</div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="rCap">每次操作总共最多回复</label>
+          <input type="number" id="rCap" min="0" max="200">
+          <div class="note">一轮里所有作品的回复合计上限，到顶自动停止。</div>
+        </div>
+        <div class="field">
+          <label for="rWorkCap">单个视频累计最多回复</label>
+          <input type="number" id="rWorkCap" min="0" max="10000">
+          <div class="note">跨所有轮次的累计上限：该视频回复数达到后整个视频跳过。0 = 不限。</div>
+        </div>
+        <div class="field">
+          <label for="dupCap">同一内容的评论最多回复几条</label>
+          <input type="number" id="dupCap" min="0" max="1000">
+          <div class="note">0 = 不限：10 个人都发「666」，这 10 条都会被回。设正数则超出部分跳过。防单个账号刷屏靠「每轮每人最多 3 条」，不靠这里。</div>
+        </div>
+      </div>
+      <div class="nrThread">
+        <div class="toggle" style="margin:0">
+          <input type="checkbox" id="colThreaded">
+          <label for="colThreaded" style="margin:0">评论下面已经有观众互聊的，也采集并回复</label>
+        </div>
+        <p class="kv" style="margin:6px 0 0">平台「未回复」= 你没直接回过这条根评论，观众在下面互聊不影响这个判定。不勾则恢复旧行为：有回复线程一律跳过（实测会静默漏掉这类评论）。</p>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="primary" onclick="saveRules()">保存规则</button>
+      <span class="kv" id="rulesSaved"></span>
+    </div>
+    <div id="rulesMsg"></div>
+  </section>
+
+  <!-- 5. 试一句话 -->
+  <section data-key="preview">
+    <h2><span class="num">5</span>试一句话</h2>
+    <p class="hint">拿一条评论当场试。走的是和真实发送完全相同的判定与生成流程，所以这里看到什么效果，真跑就是什么效果。不发送任何内容。</p>
+    <div class="row">
+      <div class="field" style="flex:2 1 320px">
+        <label for="pvWork">这条评论是发在哪个作品下的</label>
+        <select id="pvWork" onchange="updatePvWorkNote()"></select>
+        <div class="note" id="pvWorkNote"></div>
+      </div>
+      <div class="field" style="flex:1 1 150px">
+        <label for="pvUser">昵称（可留空）</label>
+        <input type="text" id="pvUser" placeholder="预览访客">
+      </div>
+    </div>
+    <div class="field">
+      <label for="pvText">假设有人这样评论</label>
+      <input type="text" id="pvText" placeholder="例：这个怎么设置的呀" onkeydown="if(event.key==='Enter')doPreview()">
+    </div>
+    <div class="actions">
+      <button class="primary" onclick="doPreview()" id="pvBtn">试一下</button>
+      <span class="kv">每次会真实调用一次模型，约几分钱。</span>
+    </div>
+    <div id="previewOut"></div>
+  </section>
+
+  <!-- 6. 运行：手动跑一轮 + 自动回复（C-49 合并成一节） -->
+  <section data-key="run">
+    <h2><span class="num">6</span>运行</h2>
+    <p class="hint">
+      两种跑法<b>共用同一套判定和出口检查</b>，区别只是「手动点一次」还是「按间隔自己跑」。
+      处理的作品沿用第 1 节的列表，列表旧了就点那里的「重新拉取列表」。
+      建议先用「只看不改」确认效果，再开自动。
+    </p>
+
+    <div class="subblock" style="margin-top:4px;padding-top:0;border-top:none">
+      <div class="subblock-h">手动跑一轮<span class="kv" style="font-weight:400;margin-left:8px">一次会话跑完，不会反复打开创作者中心</span></div>
+      <div class="actions">
+        <button class="primary" onclick="doRun(1)" id="run1Btn">只看不改（不发送）</button>
+        <button class="danger" onclick="doRun(2)" id="run2Btn">确认发送</button>
+        <span class="kv" id="runState"></span>
+      </div>
+    </div>
+
+    <div class="subblock">
+      <div class="subblock-h">自动回复（挂机模式）<span class="kv" style="font-weight:400;margin-left:8px">打开即先跑一轮，之后按间隔跑</span></div>
+      <p class="kv">打开后，控制台每隔一段时间自动跑一轮「采集 → 裁决 → 发送」：新评论进来不用你点按钮就会被回复。回复与否<b>以抖音创作者中心的「未回复」显示为准</b>；重复/雷同的评论会沿用已回复过的对应文案（同一句最多沿用 3 次，之后换一句），同一内容的评论默认不限回复条数（「回复规则」可设上限）。风险拦截、字数上限等所有规则照常生效。</p>
+      <div class="toggle">
+        <input type="checkbox" id="autoEnabled">
+        <label for="autoEnabled" style="margin:0"><b>开启自动回复</b>（打开的那一刻先立即跑一轮，之后按下面的间隔自动跑）</label>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="autoInterval">间隔（分钟）</label>
+          <input type="number" id="autoInterval" min="1" max="360" step="1">
+          <div class="note">1–360 分钟（最低 1 分钟，适合盯测）；日常建议 10–30。</div>
+        </div>
+        <div class="field" style="flex:2 1 420px">
+          <label>状态</label>
+          <div class="note" id="autoStatus" style="margin-top:6px;line-height:1.9"></div>
+        </div>
+      </div>
+      <div class="toggle">
+        <input type="checkbox" id="autoHeadless">
+        <label for="autoHeadless" style="margin:0"><b>后台运行</b>（自动轮不弹出创作者中心窗口；手动「跑一轮」不受影响）</label>
+      </div>
+      <div class="toggle">
+        <input type="checkbox" id="autoSchEnabled">
+        <label for="autoSchEnabled" style="margin:0"><b>只在设定时段内自动回复</b>（时段外自动挂起，到点自动恢复）</label>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="autoSchStart">每天从</label>
+          <input type="time" id="autoSchStart" value="08:00">
+        </div>
+        <div class="field">
+          <label for="autoSchEnd">到</label>
+          <input type="time" id="autoSchEnd" value="23:00">
+        </div>
+        <div class="field">
+          <div class="note" style="margin-top:22px">支持跨午夜：比如 22:00 到 06:00。平时不必手动开关自动模式。</div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="primary" onclick="saveAutoSettings()">保存自动回复设置</button>
+        <span class="kv" id="autoSaved"></span>
+      </div>
+      <p class="kv">只在这个控制台窗口开着的时候生效：关掉窗口 = 自动模式暂停（正在跑的一轮会正常跑完）；重新打开窗口会自动恢复调度。开关记在 config/auto-reply.json。</p>
+      <p class="kv">后台运行若连续失败（平台验证码/登录失效），把「后台运行」关掉改用窗口模式排查——窗口模式下失败画面看得见。</p>
+    </div>
+
+    <pre class="log" id="runLog"></pre>
+    <div id="lastRunBox"></div>
+  </section>
+
+  <!-- 7. 合作待办 -->
+  <section data-key="coop">
+    <h2><span class="num">7</span>合作待办<span class="badge new" id="coopBadge" style="display:none"></span></h2>
+    <p class="hint">
+      评论里出现「合作 / 商务 / 报价 / 接广」这类词时，<b>机器一律不自动回复</b>，只把这条评论记到这里，等你亲自去谈。
+      这是整个流程的最后一步：<b>采集 → 判定 →（合作类）记进本清单</b>。
+      命中过的评论同时写进「已判定不回」缓存（右上角 <b>⚙ 设置</b> 里能看到条数），下一轮不再重复判定。
+      你回过之后，勾一下右边的「<b>我已回复</b>」，这条就从清单里消失；同一条评论不会被重复记回来。
+    </p>
+    <div id="coopList"><p class="kv">还没有合作线索。</p></div>
+  </section>
+
+  <!-- 9. 风险评论怎么处理（C-26） —— 2026-10-19 拆走：
+       人设部分移到第 3 节「风险回复人设」，缓存移到右上角「⚙ 设置」，这里不再留空壳 -->
+
+  <p class="kv" style="text-align:center;margin-top:26px">
+    配置保存在项目的 config/ 目录：人设库 personas.json、作品开关 works-switch.json、回复规则 reply-rules.json、话术池 templates.json、风险处置 risk-policy.json、风险人设话术 risk-replies.json。合作待办在 state/cooperation-inbox.jsonl，「已判定不回」缓存在 state/skip-cache.json。
+  </p>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let STATE = null;
+let toastTimer = null;
+
+function toast(msg, kind){
+  const el = $('toast');
+  el.textContent = msg;
+  el.className = 'toast on' + (kind ? ' ' + kind : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = 'toast'; }, 3200);
+}
+
+async function api(path, options){
+  const res = await fetch(path, options);
+  let data = null;
+  try { data = await res.json(); } catch { data = { ok:false, error:'服务返回的不是 JSON' }; }
+  /**
+   * 后端对「这个路径我不认识」专门返回 error:'未知接口'（静态文件的 404 是纯文本，不会走到这里）。
+   * 出现它只有一个原因：**页面是旧版、进程是新版** —— 旧页面还惦记着一个已经改名的接口。
+   * 以前这种情况只在页面上留一行 HTTP 404，人只会以为 key 配错了。说过一次就够，直接给动作。
+   */
+  if (res.status === 404 && data && data.error === '未知接口'){
+    toast('这个页面还是旧版，后端已经换新了 —— 按 Ctrl+F5 强刷即可', 'err');
+  }
+  return { status: res.status, data };
+}
+function post(path, body){
+  return api(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body || {})
+  });
+}
+
+/* ---------- 渲染 ---------- */
+
+/**
+ * 页面期望的后端版本。
+ * 页面每次请求都从磁盘现读，后端却是启动时加载的 —— 不重启就会「页面有、接口没有」，
+ * 表现为"点保存报未知接口/人设库是空的"。与其让人猜，不如直接把话说清楚。
+ * 改后端接口时这里必须和 ui-server.mjs 的 CONSOLE_VERSION 一起改。
+ */
+const UI_EXPECTS = 'c60';
+
+function escapeHtml(s){
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/** 设置浮层里的一行状态 */
+function setRow(ok, label, detail, action){
+  return `<div class="setrow"><span class="dot ${ok ? 'ok' : 'bad'}"></span>` +
+    `<div class="setrow-main"><b>${label}</b><small>${escapeHtml(detail || '未知')}</small></div>` +
+    (action || '') + `</div>`;
+}
+
+function statusRows(){
+  const s = STATE.status || {};
+  const key = s.key || { ok:false, detail:'未知' };
+  const login = s.login || { ok:false, detail:'未知' };
+  const browser = s.browser || { ok:false, detail:'未知' };
+  const model = s.model || { ok:false, detail:'未知' };
+  return [
+    setRow(key.ok, 'API key', key.detail,
+      `<button class="sm" type="button" onclick="openKeyPanelFromSettings()">更换</button>`),
+    setRow(login.ok, '登录状态', login.detail,
+      `<button class="sm" type="button" onclick="openLoginPanelFromSettings()">换号</button>`),
+    setRow(browser.ok, '浏览器内核', browser.detail),
+    setRow(model.ok, '模型', model.detail),
+  ].join('');
+}
+
+function renderStatus(){
+  const s = STATE.status || {};
+  const body = $('settingsBody');
+  if (body) body.innerHTML = statusRows();
+
+  // 按钮上的小圆点：四项全绿才绿，任一异常就红并把按钮染红 —— 收起状态也不会漏看
+  const bad = ['key','login','browser','model'].filter(k => !(s[k] && s[k].ok)).length;
+  const dot = $('settingsDot');
+  if (dot) dot.className = `dot ${bad ? 'bad' : 'ok'}`;
+  const btn = $('settingsBtn');
+  if (btn){
+    btn.classList.toggle('attention', bad > 0);
+    btn.title = bad
+      ? `${bad} 项需要注意：${['key','login','browser','model']
+          .filter(k => !(s[k] && s[k].ok))
+          .map(k => ({key:'API key', login:'登录状态', browser:'浏览器内核', model:'模型'}[k]))
+          .join('、')}`
+      : 'API key、登录状态、浏览器内核、模型';
+  }
+  const hint = $('settingsHint');
+  if (hint) hint.textContent = bad ? `${bad} 项需要注意` : '全部正常';
+
+  const backend = STATE.version || '(未知)';
+  $('versionWarn').innerHTML = backend === UI_EXPECTS
+    ? ''
+    : `<div class="errbox"><b>页面和后端版本不一致（页面 ${UI_EXPECTS} / 后端 ${backend}）。</b>
+         页面是从磁盘现读的，后端进程还是启动时加载的旧版 —— 这时点保存可能报「未知接口」，人设库也可能显示为空。
+         <b>处置：关掉控制台的黑窗口，重新双击「3-控制台.bat」。</b></div>`;
+}
+
+
+/* ---------- 右上角设置浮层 ----------
+ * 四项运行状态（API key / 登录状态 / 浏览器内核 / 模型）从页头横条收进这里。
+ * 收起时不占版面，但按钮上的圆点仍然反映健康度 —— 别让「key 没配」这种问题被藏起来。
+ */
+function toggleSettings(force){
+  const p = $('settingsPanel');
+  if (!p) return;
+  const show = force === undefined ? p.hidden : force;
+  p.hidden = !show;
+  const btn = $('settingsBtn');
+  if (btn) btn.setAttribute('aria-expanded', String(show));
+  if (show){
+    renderStatus();
+    // 缓存块也在面板里：打开时用当前 STATE 重画一次，免得跑过一轮后数字还是旧的
+    if (typeof renderRiskPolicy === 'function') renderRiskPolicy();
+    const first = p.querySelector('.setrow button');
+    if (first) first.focus({ preventScroll: true });
+  }
+}
+
+/** 面板里的「更换」：收起浮层，展开页面里的密钥面板并滚过去 */
+function openKeyPanelFromSettings(){
+  toggleSettings(false);
+  toggleKeyPanel(true);
+  setTimeout(() => $('keyPanel')?.scrollIntoView({ behavior:'smooth', block:'center' }), 60);
+}
+
+function openLoginPanelFromSettings(){
+  toggleSettings(false);
+  toggleLoginPanel(true);
+  setTimeout(() => $('loginPanel')?.scrollIntoView({ behavior:'smooth', block:'center' }), 60);
+}
+
+/** 只重拉状态、不重渲染整页 —— 避免把别处没保存的输入冲掉 */
+async function refreshStatusNow(btn){
+  const old = btn ? btn.textContent : '';
+  if (btn){ btn.disabled = true; btn.textContent = '检测中…'; }
+  try {
+    const { data } = await api('/api/state');
+    if (data && data.ok){
+      STATE.status = data.status;
+      renderStatus();
+      toast('已重新检测');
+    } else {
+      toast('检测失败：' + ((data && data.error) || '未知错误'), 'err');
+    }
+  } catch (error) {
+    toast('检测失败：' + error.message, 'err');
+  } finally {
+    if (btn){ btn.disabled = false; btn.textContent = old; }
+  }
+}
+
+// 点浮层外面 / 按 Esc 收起
+document.addEventListener('click', (event) => {
+  const panel = $('settingsPanel');
+  if (!panel || panel.hidden) return;
+  if (event.target.closest('#settingsPanel') || event.target.closest('#settingsBtn')) return;
+  toggleSettings(false);
+});
+document.addEventListener('keydown', (event) => {
+  if (event.key !== 'Escape') return;
+  const panel = $('settingsPanel');
+  if (panel && !panel.hidden) toggleSettings(false);
+});
+
+/* ---------- 扫码登录 / 换账号（C-28） ----------
+ * 登录本身由 tool/src/auth-douyin.mjs 干（和 2-扫码登录.bat 是同一个脚本），
+ * 页面只负责：拉起它、把它的输出显出来、你点「我扫完了」时让服务端替你在 stdin 敲回车。
+ * 不在前端做任何登录动作，也拿不到任何 Cookie。
+ */
+let loginPollTimer = null;
+let loginChipKey = '';
+
+function renderLoginPanel(l){
+  const a = l || STATE.login || {};
+  const st = a.login || {};
+  const now = $('loginNow');
+  if (now){
+    now.textContent = (st.ok ? `当前：已登录（${st.detail}）` : `当前：${st.detail || '未登录'}`)
+      + (a.running ? ' · 登录窗口已打开' : '')
+      + (a.backupDir ? ` · 上次换号的备份：${a.backupDir}` : '')
+      + (a.archivedSkipCache ? ' · 换号时已归档旧「已判定不回」缓存' : '');
+  }
+  const running = a.running === true;
+  if ($('loginRunning')) $('loginRunning').hidden = !running;
+  if ($('btnLoginOpen')) $('btnLoginOpen').disabled = running;
+  if ($('btnLoginFresh')) $('btnLoginFresh').disabled = running;
+  const log = $('loginLog');
+  if (log){
+    const text = (a.lines || []).join('\n');
+    if (log.textContent !== text){
+      log.textContent = text;
+      log.scrollTop = log.scrollHeight;
+    }
+  }
+}
+
+function scheduleLoginPoll(){
+  clearTimeout(loginPollTimer);
+  loginPollTimer = setTimeout(() => { refreshLoginStatus(); }, 1500);
+}
+
+async function refreshLoginStatus(){
+  const { data } = await api('/api/login');
+  if (!data || !data.ok || !data.login) return STATE.login;
+  STATE.login = data.login;
+  const st = data.login.login || {};
+  // 只有状态真的变了才重画顶部 chip —— 每 1.5 秒重建一次没必要
+  const chipKey = `${st.ok}|${st.detail}`;
+  if (chipKey !== loginChipKey){
+    loginChipKey = chipKey;
+    STATE.status = STATE.status || {};
+    STATE.status.login = st;
+    renderStatus();
+  }
+  renderLoginPanel(STATE.login);
+  if (STATE.login.running) scheduleLoginPoll();
+  return STATE.login;
+}
+
+function toggleLoginPanel(force){
+  const p = $('loginPanel');
+  if (!p) return;
+  const show = force === undefined ? p.hidden : force;
+  p.hidden = !show;
+  if (show){
+    renderLoginPanel();
+    refreshLoginStatus();
+  }
+}
+
+async function startLogin(fresh){
+  const msg = $('loginMsg');
+  const hint = fresh
+    ? '换账号：会先把旧的登录存档改名备份（不删），然后打开登录窗口。继续？'
+    : '会打开一个浏览器窗口并停在抖音创作者中心登录页，用手机扫码。继续？';
+  if (!confirm(hint)) return;
+  if (msg){ msg.style.color = 'var(--muted)'; msg.textContent = '正在打开浏览器…'; }
+  const { data } = await post('/api/login/start', { fresh: !!fresh });
+  if (!data || !data.ok){
+    if (msg){ msg.style.color = 'var(--bad)'; msg.textContent = (data && data.error) || '打开失败'; }
+    return;
+  }
+  STATE.login = data.login;
+  renderLoginPanel();
+  scheduleLoginPoll();
+  if (msg){ msg.style.color = 'var(--muted)'; msg.textContent = '浏览器窗口应该已经出现了，扫完点「我扫完了」'; }
+}
+
+async function doneLogin(){
+  const msg = $('loginMsg');
+  const { data } = await post('/api/login/done', {});
+  if (!data || !data.ok){
+    if (msg){ msg.style.color = 'var(--bad)'; msg.textContent = (data && data.error) || '操作失败'; }
+    return;
+  }
+  STATE.login = data.login;
+  renderLoginPanel();
+  scheduleLoginPoll();
+  if (msg){ msg.style.color = 'var(--muted)'; msg.textContent = '已通知脚本校验登录态，正在关窗…'; }
+}
+
+async function cancelLoginFlow(){
+  const msg = $('loginMsg');
+  const { data } = await post('/api/login/cancel', {});
+  if (!data || !data.ok){
+    if (msg){ msg.style.color = 'var(--bad)'; msg.textContent = (data && data.error) || '操作失败'; }
+    return;
+  }
+  STATE.login = data.login;
+  renderLoginPanel();
+  if (msg){ msg.style.color = 'var(--muted)'; msg.textContent = '已取消，浏览器窗口会关闭'; }
+}
+
+/* ---------- 更换 API Key（C-27） ----------
+ * 三条前端纪律：
+ *   ① key 只走 password 输入框 → POST 一次，**不进 localStorage / 不进 DOM 持久节点**；
+ *   ② 提交后无论成败立刻清空输入框；
+ *   ③ 页面只显示服务端给的脱敏串，自己不做任何"记住 key"的事。
+ */
+function renderApiKeyPanel(){
+  const a = STATE.apiKey || {};
+  const now = $('keyNow');
+  if (now){
+    if (!a.file){
+      // 后端还是 c26 及更早（没有 /api/api-key 时 /api/state 里也没有 apiKey）
+      now.style.color = 'var(--bad)';
+      now.textContent = '后端还是旧版，读不到密钥详情：请关掉控制台的黑窗口，重新双击「3-控制台.bat」。';
+    } else {
+      now.style.color = '';
+      const bits = [];
+      bits.push(a.configured ? `当前：${a.masked}` : '当前：未配置');
+      if (a.source && a.source.startsWith('env:')) bits.push('来源：环境变量（优先级最高）');
+      else if (a.source && a.source.startsWith('file:')) bits.push('来源：密钥文件');
+      if (a.placeholderSource) bits.push('⚠ 现在读到的只是模板占位值');
+      if (a.envOverride) bits.push('⚠ 往文件里写不会立即生效');
+      now.textContent = bits.join(' · ');
+    }
+  }
+  const fp = $('keyFilePath');
+  if (fp && a.file) fp.textContent = a.file;
+}
+
+function toggleKeyPanel(force){
+  const p = $('keyPanel');
+  if (!p) return;
+  const show = force === undefined ? p.hidden : force;
+  p.hidden = !show;
+  if (show){
+    const input = $('apiKeyInput');
+    const msg = $('apiKeyMsg');
+    if (input) input.value = '';
+    if (msg){ msg.textContent = ''; msg.style.color = ''; }
+    renderApiKeyPanel();
+    if (input) input.focus();
+  }
+}
+
+function applyApiKeySnapshot(next){
+  STATE.apiKey = next || {};
+  STATE.status = STATE.status || {};
+  STATE.status.key = {
+    ok: STATE.apiKey.configured === true,
+    detail: STATE.apiKey.configured ? `已配置（${STATE.apiKey.masked}）` : '未配置 API key',
+    source: STATE.apiKey.source,
+  };
+  renderStatus();
+  renderApiKeyPanel();
+}
+
+async function saveApiKey(mode){
+  const input = $('apiKeyInput');
+  const msg = $('apiKeyMsg');
+  const btn = $('apiKeySaveBtn');
+  const raw = input ? input.value.trim() : '';
+  if (!raw){
+    if (msg){ msg.style.color = 'var(--bad)'; msg.textContent = '请先粘贴 key'; }
+    if (input) input.focus();
+    return;
+  }
+  const verify = mode !== 'noverify';
+  if (btn) btn.disabled = true;
+  if (msg){ msg.style.color = 'var(--muted)'; msg.textContent = verify ? '正在验证并保存…' : '正在保存…'; }
+  try {
+    const { data } = await post('/api/api-key', { key: raw, verify });
+    if (input) input.value = ''; // 成败都清空：key 不在 DOM 里多留一秒
+    if (!data || !data.ok){
+      if (msg){ msg.style.color = 'var(--bad)'; msg.textContent = (data && data.error) || '保存失败'; }
+      return;
+    }
+    applyApiKeySnapshot(data.apiKey);
+    if (msg){
+      msg.style.color = data.warning ? 'var(--warn)' : 'var(--ok)';
+      msg.textContent = `已保存到 ${data.savedTo}` + (data.warning ? `　⚠ ${data.warning}` : '');
+    }
+  } catch (error){
+    if (input) input.value = '';
+    if (msg){ msg.style.color = 'var(--bad)'; msg.textContent = `请求失败：${error.message}`; }
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function clearApiKeyFromPanel(){
+  const ok = confirm('从密钥文件里移除已保存的 key？\n\n移除后如果环境变量里也没有 key，自动回复会停下来。');
+  if (!ok) return;
+  const msg = $('apiKeyMsg');
+  const { data } = await post('/api/api-key/clear', {});
+  if (!data || !data.ok){
+    if (msg){ msg.style.color = 'var(--bad)'; msg.textContent = (data && data.error) || '移除失败'; }
+    return;
+  }
+  applyApiKeySnapshot(data.apiKey);
+  if (msg){
+    msg.style.color = 'var(--muted)';
+    msg.textContent = data.removed ? '已从文件移除' : '文件里本来就没有 key';
+  }
+  if (data.warning){
+    if (msg){ msg.style.color = 'var(--warn)'; msg.textContent += `　⚠ ${data.warning}`; }
+  }
+}
+
+/* ---------- 今日概览 + 本轮明细（C-29） ---------- */
+
+function renderToday(){
+  const box = $('todayBar');
+  if (!box) return;
+  const t = (STATE.today && STATE.today.today) || null;
+  const al = STATE.alerts || {};
+  box.classList.toggle('bad', al.needsAttention === true);
+  if (al.needsAttention){
+    box.innerHTML = `⚠ 最近连续 <b>${al.consecutiveFailures || 0}</b> 轮没有正常跑完 —— 通常是登录失效、弹了验证码，或浏览器被占用。` +
+      `点右上角「⚙ 设置」→「登录状态」那一行的「换号」重新扫码，或到第 6 节「运行」里的手动跑一轮看具体报错。`;
+    return;
+  }
+  if (!t || (!t.rounds && !t.replied && !(STATE.today && STATE.today.ledgerReplied))){
+    box.innerHTML = '<span>今天还没有跑过一轮（统计从现在开始记）。</span>';
+    return;
+  }
+  const replied = (STATE.today && STATE.today.ledgerReplied) || t.replied || 0;
+  box.innerHTML =
+    `<span>今天回了 <b>${replied}</b> 条</span>` +
+    (t.rounds
+      ? `<span>跑了 <b>${t.rounds}</b> 轮</span>` +
+        `<span>采到 <b>${t.total}</b> 条</span>` +
+        `<span>判定没回 <b>${t.skipped}</b> 条</span>` +
+        `<span>模型花费 ≈ <b>¥${Number(t.costCny || 0).toFixed(3)}</b></span>`
+      : '<span>轮次与花费从这一版开始记</span>') +
+    (t.failedRounds ? `<span style="color:var(--bad)">失败 <b>${t.failedRounds}</b> 轮</span>` : '');
+}
+
+/**
+ * 判定结果分组时用的类别名。
+ * C-41 起第 4 节 15 类都能设「不回复」，所以这里也必须覆盖全部类别，
+ * 否则日志里会冒出一串英文 key（例如「credential（不回）」）看不懂。
+ * 只在 STATE 还没加载时用；正常渲染仍以服务端下发的 label 为准。
+ */
+const SKIP_CATEGORY_TEXT = {
+  political: '政治敏感',
+  minors: '涉及未成年人',
+  sticker: '纯图片 / 纯表情',
+  porn: '色情露骨',
+  violence: '血腥暴力',
+  platform: '平台内容红线',
+  personal: '要创作者本人才知道的事',
+  credential: '索要账号 / 密码 / 密钥',
+  contact: '留联系方式 / 站外引导',
+  abuse: '辱骂 / 威胁',
+  legal: '法务 / 投诉 / 维权',
+  refund: '退款 / 退货 / 消费质疑',
+  bargain: '砍价 / 优惠 / 竞品对比',
+  injection: '提示词注入',
+  other: '其他不确定',
+  cooperation: '合作意向'
+};
+function decisionGroup(d){
+  const r = String((d && d.reason) || '');
+  if (r.startsWith('cached:')) return '已判定不回（缓存命中，零花费）';
+  // C-50：合作类一律不回、只记待办 —— 单列一组，作者一眼能看出"这几条是留给我谈的"
+  if (d.category === 'cooperation' || r.startsWith('cooperation:')) return '合作意向（不自动回 · 已记进待办）';
+  // 名称从一张表取，别在这里再写一遍 if（新增类别时只改表）
+  if (SKIP_CATEGORY_TEXT[d.category]) return `${SKIP_CATEGORY_TEXT[d.category]}（不回）`;
+  if (d.category === 'no_reply_rule') return `自定义不回复${d.ruleName ? `：${d.ruleName}` : ''}`;
+  if (/表情/.test(r)) return '纯图片 / 纯表情（不回）';
+  if (/limit|限额|上限|额度/i.test(r)) return '达到限额';
+  if (/no_template/.test(r)) return '没匹配到话术';
+  if (d.action === 'reply') return '已回复';
+  return r.split(/[：:]/)[0].slice(0, 20) || '其它';
+}
+
+function renderLastRun(){
+  const box = $('lastRunBox');
+  if (!box) return;
+  const r = STATE.lastRun || {};
+  if (!r.at){
+    box.innerHTML = '<p class="kv" style="margin-top:14px">还没有跑过一轮。</p>';
+    return;
+  }
+  const list = r.decisions || [];
+  const head = `上一轮：${fmtWhen(r.at)} · 采到 ${r.total ?? 0} 条 · 回了 ${r.replied ?? 0} 条`;
+  if (!list.length){
+    box.innerHTML = `<div class="lrBox"><div class="lrHead">${escapeHtml(head)}</div></div>`;
+    return;
+  }
+  const groups = new Map();
+  for (const d of list){
+    const g = decisionGroup(d);
+    if (!groups.has(g)) groups.set(g, []);
+    groups.get(g).push(d);
+  }
+  const rows = [...groups.entries()]
+    .sort((a, b) => b[1].length - a[1].length)
+    .map(([g, items]) => {
+      const li = items.map((d) =>
+        `<li><b>${escapeHtml(d.username || '（未知）')}</b>：${escapeHtml(d.text || '')}` +
+        (d.action === 'reply' ? ' <span class="rTag ok">已回</span>' : '') + '</li>').join('');
+      return `<details class="lrGroup"><summary><b>${escapeHtml(g)}</b><span class="kv"> ×${items.length}</span></summary><ul>${li}</ul></details>`;
+    }).join('');
+  box.innerHTML = `<div class="lrBox"><div class="lrHead">${escapeHtml(head)}<span class="kv"> · 逐条原因，点开看</span></div>${rows}</div>`;
+}
+
+const SCOPE_TEXT = {
+  latest:  { t:'只跑最新作品', d:'每次自动挑发布时间最新的那一条' },
+  selected:{ t:'按勾选跑',     d:'只处理下面勾上的作品' },
+  all:     { t:'全部作品',     d:'列表里的每一个都跑（较慢）' }
+};
+
+function renderScope(){
+  const modes = STATE.scope.options;
+  $('scopeGrid').innerHTML = modes.map(m => {
+    const info = SCOPE_TEXT[m] || { t:m, d:'' };
+    const on = STATE.scope.mode === m ? ' on' : '';
+    return `<div class="scope-card${on}" onclick="setScope('${m}')"><b>${info.t}</b><span>${info.d}</span></div>`;
+  }).join('');
+  const enabled = STATE.works.filter(w => w.enabled).length;
+  $('scopeNote').textContent = STATE.scope.mode === 'selected'
+    ? `当前已勾选 ${enabled} 个作品。`
+    : (STATE.scope.fileError ? STATE.scope.fileError : '');
+}
+
+function renderWorks(){
+  syncNotesFromDom(); // 先收编 DOM 现值再重建列表 —— 否则重渲染会吃掉未保存的输入
+  const kw = $('workSearch').value.trim().toLowerCase();
+  const list = STATE.works.filter(w => !kw || w.title.toLowerCase().includes(kw));
+  $('workCount').textContent = `共 ${STATE.works.length} 个作品，已勾选 ${STATE.works.filter(w=>w.enabled).length} 个`;
+  if (!list.length){
+    $('works').innerHTML = `<div class="work"><span class="kv">${STATE.works.length ? '没有匹配的作品' : '作品列表为空，点上面的「重新拉取列表」'}</span></div>`;
+    return;
+  }
+  const noteMax = (STATE.workContext && STATE.workContext.noteMax) || 200;
+  $('works').innerHTML = list.map(w => {
+    const k = JSON.stringify(w.key).replace(/"/g,'&quot;');
+    const note = w.contextNote || '';
+    return `
+    <div class="work">
+      <label class="work-main">
+        <input type="checkbox" ${w.enabled ? 'checked' : ''} onchange="toggleWork(${k}, this.checked)">
+        <span>
+          <span class="t">${escapeHtml(w.title)}${w.isLatest ? '<span class="badge new">最新</span>' : ''}${w.matchedBy === 'ambiguous_title' ? '<span class="badge">同名作品，无法自动匹配</span>' : ''}</span>
+          <span class="m">${escapeHtml(w.publishText || '发布时间未知')}</span>
+        </span>
+      </label>
+      <div class="work-ctx">
+        <span class="ctx-tag ${note ? 'on' : ''}">${note ? '已填梗' : '没填梗'}</span>
+        <input type="text" maxlength="${noteMax}" value="${escapeHtml(note)}"
+               data-ctx-key="${escapeHtml(w.key)}"
+               placeholder="这条视频在讲什么 / 在玩什么梗（例：复刻买瓜名场面，评论区都在接台词）"
+               oninput="queueNoteSave(this)"
+               onchange="saveWorkNote(${k}, this.value, this)"
+               onkeydown="if(event.key==='Enter')this.blur()">
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function linesToArr(v){ return String(v||'').split('\n').map(x=>x.trim()).filter(Boolean); }
+function arrToLines(a){ return (a||[]).join('\n'); }
+
+/* ---------- 人设库（C-23）----------
+ *
+ * 2026-10-17 作者的三条整改：
+ *   ① 人设要能增删，还要能用一句话让 AI 生成；
+ *   ② 保存即最终版，去掉「恢复上一次保存」；
+ *   ③ 固定一套时收起随机池。
+ *
+ * 关键约定：人设库的真相在服务端 config/personas.json，页面只持有副本。
+ * 每次增删改都用服务端返回的 items 整体替换本地列表 —— 不做"本地猜服务端"，
+ * 否则两个标签页同时开着就会互相覆盖。
+ */
+
+let personaDirty = false;      // 表单里有没有「改了还没保存」的内容
+let selectedPersonaId = null;  // 当前正在编辑哪一套
+let personaExamples = [];      // 当前这套人设的语气示例（编辑中）
+
+function personaItems(){ return (STATE.personas && STATE.personas.items) || []; }
+
+function currentPersonaItem(){
+  const items = personaItems();
+  return items.find(p => p.id === selectedPersonaId) || items[0] || null;
+}
+
+function rememberSelection(id){
+  try { localStorage.setItem('douyin.persona.selected', id); } catch(_) {}
+}
+
+/** 上次编辑的那套（刷新后还停在那里）；找不到就退回第一套 */
+function initialPersonaId(){
+  let saved = null;
+  try { saved = localStorage.getItem('douyin.persona.selected'); } catch(_) {}
+  const items = personaItems();
+  if (saved && items.some(p => p.id === saved)) return saved;
+  return items[0] ? items[0].id : null;
+}
+
+function applyPersonaItems(items){
+  if (!STATE.personas) STATE.personas = {};
+  STATE.personas.items = items || [];
+}
+
+function personaTags(item){
+  const rot = STATE.rotation || {};
+  const tags = [];
+  if (rot.mode !== 'random' && rot.single === item.id) tags.push('<span class="pTag fixed">固定</span>');
+  if (rot.mode === 'random' && (rot.pool || []).includes(item.id)) tags.push('<span class="pTag pool">池</span>');
+  /**
+   * 风险人设库状态（链路1）：一眼看出这套人设能不能回风险评论、占多少。
+   * 不显示"未生成"的标签 —— 列表已经够挤，未生成的人在第 3 节有一整块板。
+   */
+  const risk = ((STATE.riskPersonas && STATE.riskPersonas.ready) || []).find(r => r.personaId === item.id);
+  if (risk && risk.active) tags.push(`<span class="pTag pool" title="风险评论由它负责 ${risk.percent}%">风险 ${risk.percent}%</span>`);
+  else if (risk) tags.push('<span class="pTag" title="有话术但没勾选负责">风险·未勾</span>');
+  return tags.join('');
+}
+
+function renderPersonaList(){
+  const items = personaItems();
+  const cur = currentPersonaItem();
+  if (!items.length){
+    $('personaList').innerHTML = '<div class="pcard-empty">人设库是空的。<br>用下面的「新建」或「AI 生成」加一套。</div>';
+    $('personaCount').textContent = '';
+    return;
+  }
+  // 列表只放名字：示例引文、复制/删除都不在这一层，避免一眼看去全是字
+  $('personaList').innerHTML = items.map(p => {
+    const on = cur && p.id === cur.id ? ' on' : '';
+    const sub = p.tagline || (p.persona && p.persona.identity) || '';
+    return `<div class="pcard${on}" onclick="selectPersona('${p.id}')" title="${escapeHtml(sub || p.name)}">
+      <span class="pcard-name">${escapeHtml(p.name)}</span>${personaTags(p)}
+    </div>`;
+  }).join('');
+  const max = (STATE.personas && STATE.personas.max) || 24;
+  $('personaCount').textContent = `${items.length}/${max}`;
+}
+
+/** 切换正在编辑的人设。有未保存改动时先问一声 —— 切过去就等于丢掉那些改动 */
+function selectPersona(id){
+  if (id === selectedPersonaId) return;
+  const cur = currentPersonaItem();
+  if (personaDirty && !confirm(`「${cur ? cur.name : '当前人设'}」有未保存的改动，切换会丢掉这些改动。\n\n继续切换吗？`)) return;
+  selectedPersonaId = id;
+  rememberSelection(id);
+  personaDirty = false;
+  $('personaMsg').innerHTML = '';
+  $('personaSaved').textContent = '';
+  renderPersonaList();
+  renderPersona();
+  // 不滚动页面：左栏是 sticky 的，切换后右侧原地换成新内容，视线不跳
+}
+
+/** 新建一套空白人设（立刻入库：作者点了新建，就不该因为忘了保存而白建） */
+async function newPersonaBlank(){
+  if (personaDirty && !confirm('当前这套人设有未保存的改动。新建后会自动切到新人设，未保存的改动会丢。\n\n继续吗？')) return;
+  const max = (STATE.personas && STATE.personas.max) || 24;
+  if (personaItems().length >= max){ toast(`人设最多 ${max} 套，先删几套再新建`, 'warn'); return; }
+
+  const { data } = await post('/api/persona', {
+    name: `新人设 ${personaItems().length + 1}`,
+    tagline: '',
+    persona: STATE.personaDefaults || {},
+  });
+  if (!data.ok){
+    toast((data.errors && data.errors[0]) || data.error || '新建失败', 'err');
+    return;
+  }
+  applyPersonaItems(data.items);
+  selectedPersonaId = data.item.id;
+  rememberSelection(data.item.id);
+  personaDirty = false;
+  renderPersonaList(); renderRotation(); renderPersona();
+  $('personaMsg').innerHTML = `<div class="warnbox">已新建「<b>${escapeHtml(data.item.name)}</b>」。改完点右上角「保存人设」即可。</div>`;
+  focusPersonaEditor();
+  toast('已新建一套空白人设');
+}
+
+/** 复制一套：最常见的「增」——拿现有的改两个词，比从零写快 */
+async function duplicatePersonaById(id){
+  if (personaDirty && !confirm('当前这套人设有未保存的改动，复制后会自动切到副本，未保存的改动会丢。\n\n继续吗？')) return;
+  const max = (STATE.personas && STATE.personas.max) || 24;
+  if (personaItems().length >= max){ toast(`人设最多 ${max} 套，先删几套再复制`, 'warn'); return; }
+
+  const { data } = await post('/api/persona/duplicate', { id });
+  if (!data.ok){ toast(data.error || '复制失败', 'err'); return; }
+  applyPersonaItems(data.items);
+  selectedPersonaId = data.item.id;
+  rememberSelection(data.item.id);
+  personaDirty = false;
+  renderPersonaList(); renderRotation(); renderPersona();
+  $('personaMsg').innerHTML = `<div class="warnbox">已复制出「<b>${escapeHtml(data.item.name)}</b>」，直接改就行。</div>`;
+  focusPersonaEditor();
+  toast('已复制一套人设');
+}
+
+async function deletePersonaById(id){
+  const item = personaItems().find(p => p.id === id);
+  if (!item) return;
+  if (personaItems().length <= 1){ toast('至少要保留一套人设', 'warn'); return; }
+  /** 链路：直接删人设库 → 风险人设库对应删除；在用的占比由其他人自动补上 */
+  const risk = ((STATE.riskPersonas && STATE.riskPersonas.ready) || []).find(r => r.personaId === id);
+  const riskNote = risk
+    ? `\n\n它的风险话术会一起删除（不再出现在风险人设库里）` +
+      (risk.active ? `，它负责的 ${risk.percent}% 会自动分给其他勾选负责的人设。` : '。')
+    : '';
+  if (!confirm(`删除人设「${item.name}」？\n\n删掉后不能恢复。${riskNote}\n如果它正在被固定使用或在随机池里，会自动改用其余人设。`)) return;
+
+  const { data } = await post('/api/persona/delete', { id });
+  if (!data.ok){ toast(data.error || '删除失败', 'err'); return; }
+  applyPersonaItems(data.items);
+  if (data.rotation) STATE.rotation = { ...STATE.rotation, ...data.rotation };
+  if (selectedPersonaId === id){ selectedPersonaId = null; personaDirty = false; }
+  if (!selectedPersonaId) selectedPersonaId = initialPersonaId();
+  renderPersonaList(); renderRotation(); renderPersona();
+  await refreshRiskLib();
+  toast(`已删除「${item.name}」`);
+}
+
+/** 人设表单任何输入 → 标记未保存（事件委托绑定在 #personaForm 上，动态示例行也覆盖） */
+function markPersonaDirty(){
+  if (personaDirty) return;
+  personaDirty = true;
+  $('personaSaved').innerHTML = '<b style="color:#b7791f">● 有未保存的改动</b>';
+}
+
+/** 文本域按内容自动长高：人设字段常写 3–6 行，固定高度会藏半行、出滚动条，看着像没填完 */
+function autoGrow(el){
+  if (!el || el.tagName !== 'TEXTAREA') return;
+  // 折起来的 <details> 里 scrollHeight 恒为 0，算出来会偏矮；先跳过，展开时由 toggle 再补算
+  const box = el.closest('details');
+  if (box && !box.open) return;
+  // 先压到 0 再读 scrollHeight：否则 rows 属性会把高度撑在 3 行，短内容也缩不下来
+  el.style.height = '0px';
+  el.style.height = Math.min(Math.max(el.scrollHeight + 2, 44), 420) + 'px';
+}
+function autoGrowAll(){
+  document.querySelectorAll('#personaForm textarea').forEach(autoGrow);
+}
+
+// 高级设置是 <details>，折叠时量不出内容高度 —— 展开（toggle 不冒泡，用捕获）后补算一次
+document.addEventListener('toggle', (e) => {
+  const box = e.target;
+  if (box && box.tagName === 'DETAILS' && box.open) autoGrowAll();
+}, true);
+
+function renderPersona(){
+  const item = currentPersonaItem();
+  if (!item) return;
+  if (!selectedPersonaId) selectedPersonaId = item.id;
+
+  // 标题栏始终跟着「正在编辑哪套」走；即使表单有未保存改动也不影响这里
+  $('editingName').textContent = item.name;
+  const sub = item.tagline || (item.persona && item.persona.identity) || '';
+  $('editingTag').textContent = sub || '（还没有一句话说明）';
+
+  // 有未保存的编辑时绝不回填表单：任何全量刷新（保存规则 / 刷新列表 / 跑完一轮）
+  // 都不该把改到一半的人设静默冲掉
+  if (personaDirty){
+    $('personaSaved').innerHTML = '<b style="color:#b7791f">● 有未保存的改动</b>';
+    return;
+  }
+
+  const p = item.persona || {};
+  $('pName').value = item.name || '';
+  $('pTagline').value = item.tagline || '';
+  $('pEnabled').checked = p.enabled !== false;
+  $('pIdentity').value = p.identity || '';
+  $('pSelf').value = p.self_call || '';
+  $('pAudience').value = p.audience_call || '';
+  $('pSignature').value = p.signature || '';
+  $('pTone').value = p.tone || '';
+  $('pTraits').value = arrToLines(p.traits);
+  $('pCatch').value = arrToLines(p.catchphrases);
+  $('pBanned').value = arrToLines(p.banned_words);
+  $('pRules').value = arrToLines(p.extra_rules);
+  personaExamples = (p.examples || []).map(ex => ({ comment: ex.comment, reply: ex.reply }));
+  renderExamples(personaExamples);
+  autoGrowAll();
+  $('personaSaved').textContent = (STATE.personas && STATE.personas.error) || '';
+}
+
+/* ---------- 编辑区标题栏上的「复制 / 删除」（作用于当前正在编辑的那套） ---------- */
+
+function duplicateCurrentPersona(){
+  const item = currentPersonaItem();
+  if (!item) return;
+  duplicatePersonaById(item.id);
+}
+
+function deleteCurrentPersona(){
+  const item = currentPersonaItem();
+  if (!item) return;
+  deletePersonaById(item.id);
+}
+
+/** 展开/收起「用一句话生成」；不传参 = 切换 */
+function toggleAiPanel(force){
+  const panel = $('aiPanel');
+  const btn = $('aiToggleBtn');
+  if (!panel) return;
+  const show = typeof force === 'boolean' ? force : panel.hasAttribute('hidden');
+  if (show){
+    panel.removeAttribute('hidden');
+    if (btn) btn.classList.add('on');
+    // 按钮在左栏底部，面板在页面顶部：页面滚到中段时点开，面板会出现在视野外
+    if (panel.scrollIntoView) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if ($('aiPersonaDesc')) $('aiPersonaDesc').focus({ preventScroll: true });
+  } else {
+    panel.setAttribute('hidden', '');
+    if (btn) btn.classList.remove('on');
+  }
+}
+
+/** 新建 / 复制 / AI 生成之后，把编辑区带回视野（否则用户还停在旧位置，看不到新人设） */
+function focusPersonaEditor(){
+  const shell = document.querySelector('.psona');
+  if (!shell) return;
+  const top = shell.getBoundingClientRect().top + window.scrollY - 8;
+  window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+}
+
+/* ---------- 用一句话让 AI 生成人设 ---------- */
+
+async function generatePersonaByAi(){
+  const desc = $('aiPersonaDesc').value.trim();
+  if (!desc){ toast('先用一句话描述你想要的人设', 'warn'); $('aiPersonaDesc').focus(); return; }
+  const max = (STATE.personas && STATE.personas.max) || 24;
+  if (personaItems().length >= max){ toast(`人设最多 ${max} 套，先删几套再生成`, 'warn'); return; }
+  // 生成成功会自动切到新人设；当前这套没保存的改动会随之丢掉 —— 先问一声（也避免白花一次生成费）
+  if (personaDirty && !confirm('当前这套人设有未保存的改动。AI 会新建一套并自动切过去，未保存的改动会丢。\n\n继续生成吗？')) return;
+
+  $('aiGenBtn').disabled = true;
+  $('aiGenBtn').textContent = '生成中…（约 10–30 秒）';
+  $('aiPersonaMsg').innerHTML = '<p class="kv">正在让模型写这套人设，别关页面…</p>';
+
+  const { data } = await post('/api/persona/generate', { description: desc });
+
+  $('aiGenBtn').disabled = false;
+  $('aiGenBtn').textContent = 'AI 生成人设';
+
+  if (!data.ok){
+    $('aiPersonaMsg').innerHTML = `<div class="errbox">${escapeHtml(data.error || '生成失败')}</div>`;
+    toast('AI 生成失败', 'err');
+    return;
+  }
+  applyPersonaItems(data.items);
+  selectedPersonaId = data.item.id;
+  rememberSelection(data.item.id);
+  personaDirty = false;
+  $('aiPersonaDesc').value = '';
+  renderPersonaList(); renderRotation(); renderPersona();
+
+  const shortened = (data.truncated && data.truncated.length)
+    ? `<br>模型有字段写超了，已按上限收短：${escapeHtml(data.truncated.join('、'))}。`
+    : '';
+  $('aiPersonaMsg').innerHTML =
+    `<div class="warnbox">已生成「<b>${escapeHtml(data.item.name)}</b>」并存进人设库，现在显示在下面的表单里。` +
+    `不满意可以直接改，或者点右上角「删除」。${shortened}</div>`;
+  focusPersonaEditor();
+  toast('AI 人设已生成');
+}
+
+/* ---------- 多套人设 · 固定/随机 ---------- */
+
+function renderRotation(){
+  const r = STATE.rotation || {};
+  if (!$('rotSingle')) return;
+  const items = personaItems();
+  const opts = items.map(p => ({ id: p.id, name: p.name }));
+
+  $('rotSingle').checked = r.mode !== 'random';
+  $('rotRandom').checked = r.mode === 'random';
+  $('rotSingleSel').innerHTML = opts.map(o =>
+    `<option value="${escapeHtml(o.id)}" ${o.id === r.single ? 'selected' : ''}>${escapeHtml(o.name)}</option>`
+  ).join('');
+  const pool = new Set(r.pool || []);
+  // 池子用胶囊而不是竖排勾选框：9 套人设也只占两三行
+  $('rotPool').innerHTML = opts.map(o =>
+    `<label class="pchip"><input type="checkbox" data-rot="${escapeHtml(o.id)}" ${pool.has(o.id) ? 'checked' : ''}><span>${escapeHtml(o.name)}</span></label>`
+  ).join('');
+
+  const names = (ids) => (ids || []).map(id => (opts.find(o => o.id === id)?.name || id));
+  $('rotMsg').innerHTML = r.fileError
+    ? `<div class="warnbox">${escapeHtml(r.fileError)}</div>`
+    : `<p class="kv" style="margin:9px 0 0">当前生效：${r.mode === 'random'
+        ? `随机切换 · ${(r.pool || []).length} 套${(r.pool || []).length < 2 ? '（⚠️ 只有 1 套，勾 2 套以上才有变化）' : ''}`
+        : `固定「${names([r.single]).join('')}」`}</p>`;
+
+  applyRotationVisibility();
+  refreshRotationDirty();
+}
+
+/**
+ * ★ 作者要的收放（2026-10-17）：
+ *   固定一套 → 随机池整块收起来，只留「固定时用哪一套」；
+ *   多套随机 → 反过来，只显示随机池。
+ * 只切显示不动配置：从随机切回固定再切回来，之前勾好的池子还在。
+ */
+function applyRotationVisibility(){
+  const random = $('rotRandom') && $('rotRandom').checked;
+  const singleWrap = $('rotSingleWrap');
+  const poolWrap = $('rotPoolWrap');
+  if (singleWrap) singleWrap.style.display = random ? 'none' : '';
+  if (poolWrap) poolWrap.style.display = random ? '' : 'none';
+}
+
+/** 页面上选的和磁盘上存的不一样 → 明确提示「还没生效」。切了不等于存了，这是最容易被误解的一处 */
+function rotationDraft(){
+  return {
+    mode: $('rotRandom') && $('rotRandom').checked ? 'random' : 'single',
+    single: $('rotSingleSel') ? $('rotSingleSel').value : '',
+    pool: [...document.querySelectorAll('[data-rot]')].filter(el => el.checked).map(el => el.dataset.rot),
+  };
+}
+
+function refreshRotationDirty(){
+  const el = $('rotDirty');
+  if (!el) return;
+  const saved = STATE.rotation || {};
+  const draft = rotationDraft();
+  let dirty = draft.mode !== (saved.mode || 'single');
+  if (!dirty){
+    dirty = draft.mode === 'single'
+      ? draft.single !== saved.single
+      : [...draft.pool].sort().join('|') !== [...(saved.pool || [])].sort().join('|');
+  }
+  el.style.display = dirty ? '' : 'none';
+}
+
+async function saveRotation(){
+  const mode = $('rotRandom').checked ? 'random' : 'single';
+  const single = $('rotSingleSel').value;
+  const body = { mode, single };
+  if (mode === 'random'){
+    body.pool = [...document.querySelectorAll('[data-rot]')].filter(el => el.checked).map(el => el.dataset.rot);
+    if (!body.pool.length){ toast('随机池至少要勾 1 套人设', 'warn'); return; }
+  }
+  const { data } = await post('/api/persona-rotation', body);
+  if (!data.ok){ toast(data.error || '保存失败', 'err'); return; }
+  STATE.rotation = { ...STATE.rotation, ...data.rotation };
+  renderRotation();
+  renderPersonaList(); // 卡片上的「当前固定 / 随机池」标记会变
+  $('rotSaved').textContent = '已保存 · ' + new Date().toLocaleTimeString();
+  toast(mode === 'random' ? '已开启多套人设随机切换' : '已固定为指定人设');
+}
+
+/* ---------- 语气示例 ---------- */
+
+function renderExamples(exs){
+  $('exList').innerHTML = exs.map((ex, i) => `
+    <div class="ex">
+      <input type="text" value="${escapeHtml(ex.comment)}" placeholder="评论" data-ex-c="${i}">
+      <span class="arrow">→</span>
+      <input type="text" value="${escapeHtml(ex.reply)}" placeholder="回复" data-ex-r="${i}">
+      <button class="sm" onclick="removeExample(${i})">删</button>
+    </div>`).join('') || '<p class="kv" style="margin:0 0 8px">还没有示例。</p>';
+}
+function addExample(){
+  if (personaExamples.length >= 6){ toast('示例最多 6 条','warn'); return; }
+  collectExamples();
+  personaExamples.push({ comment:'', reply:'' });
+  renderExamples(personaExamples);
+  markPersonaDirty();
+}
+function removeExample(i){
+  collectExamples();
+  personaExamples.splice(i,1);
+  renderExamples(personaExamples);
+  markPersonaDirty();
+}
+function collectExamples(){
+  const out = [];
+  document.querySelectorAll('[data-ex-c]').forEach(el => {
+    const i = Number(el.dataset.exC);
+    out[i] = out[i] || { comment:'', reply:'' };
+    out[i].comment = el.value.trim();
+  });
+  document.querySelectorAll('[data-ex-r]').forEach(el => {
+    const i = Number(el.dataset.exR);
+    out[i] = out[i] || { comment:'', reply:'' };
+    out[i].reply = el.value.trim();
+  });
+  personaExamples = out.filter(x => x && (x.comment || x.reply));
+}
+
+/**
+ * 第 4 节「各类评论怎么处理」（C-41，2026-10-19 作者要求与风险处置合并）。
+ *
+ * ★ 这些类别**不是**前端自己存的开关：它们直接绑定 config/risk-policy.json 的
+ *   routes[x].action —— skip 不回复 / template 用模板 / reply 正常回复（2026-10-20 起三值）。
+ *   为什么不做成独立配置：判定链读的就是 risk-policy，另存一份必然和真实行为漂移。
+ *   这里的 label 只在服务端没下发时兜底，正常情况一律用服务端的。
+ *   C-42 起不再有「锁死」的类别，15 类全部可选。
+ */
+const NO_REPLY_TYPE_FALLBACK = [
+  { key: 'political', label: '政治敏感', enabled: true },
+  { key: 'minors', label: '涉及未成年人', enabled: true },
+  { key: 'sticker', label: '无法识别的纯图片、纯表情评论', enabled: true },
+  { key: 'porn', label: '色情露骨', enabled: true },
+  { key: 'violence', label: '血腥暴力', enabled: true },
+  { key: 'platform', label: '平台内容红线（赌博 / 毒品 / 医美疗效 / 荐股收益）', enabled: false },
+  { key: 'personal', label: '要创作者本人才知道的事（订单 / 物流 / 参数 / 售后）', enabled: false },
+  { key: 'credential', label: '索要账号 / 密码 / 密钥', enabled: false },
+  { key: 'contact', label: '留联系方式 / 站外引导', enabled: false },
+  { key: 'abuse', label: '辱骂 / 威胁', enabled: false },
+  { key: 'legal', label: '法务 / 投诉 / 维权', enabled: false },
+  { key: 'refund', label: '退款 / 退货 / 消费质疑', enabled: false },
+  { key: 'bargain', label: '砍价 / 优惠 / 竞品对比', enabled: false },
+  { key: 'injection', label: '提示词注入（让我忽略规则的留言）', enabled: false },
+  { key: 'other', label: '其他不确定（兜底）', enabled: false }
+];
+
+/** 服务端下发的整张表；拿不到就用兜底表 */
+function noReplyTypeRows(){
+  const r = STATE.rules || {};
+  return Array.isArray(r.noReplyTypes) && r.noReplyTypes.length ? r.noReplyTypes : NO_REPLY_TYPE_FALLBACK;
+}
+
+/**
+ * 展开状态：作者要的是「按上次的选择保存」——
+ * 折过的下次还是折着，展开的刷新后还是展开的，不是每次回到默认。
+ * 统一存在 localStorage 的 douyin.openPanels 里（抽屉、评论类型整块、人设高级设置共用一套）。
+ */
+const OPEN_STORE_KEY = 'douyin.openPanels';
+function loadOpenPanels(){
+  try {
+    const arr = JSON.parse(localStorage.getItem(OPEN_STORE_KEY) || '[]');
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch(_) { return new Set(); }
+}
+const openPanels = loadOpenPanels();
+function saveOpenPanels(){
+  try { localStorage.setItem(OPEN_STORE_KEY, JSON.stringify([...openPanels])); } catch(_) {}
+}
+
+/** 每类抽屉是否展开（与 openPanels 同一个集合，刷新后自动恢复） */
+const hOpen = openPanels;
+
+/**
+ * 给 <details data-persist="..."> 挂上「按上次的选择恢复 + 一改就存」。
+ * 评论类型整块、人设高级设置都走这条，页面刷新后不再回到默认。
+ */
+function setupOpenPanels(){
+  document.querySelectorAll('details[data-persist]').forEach(d => {
+    const key = d.dataset.persist;
+    if (openPanels.has(key)) d.open = true;
+    d.addEventListener('toggle', () => {
+      if (d.open) openPanels.add(key); else openPanels.delete(key);
+      saveOpenPanels();
+      // 打开评论类型时顺手拉一次最新话术：人设可能是在别的标签页/后台改过的
+      if (d.open && key === 'policyBox') refreshTypeTemplates();
+    });
+  });
+}
+
+function toggleTypePanel(key){
+  const panel = document.getElementById('hPanel_' + key);
+  if (!panel) return;
+  const willOpen = panel.hidden;
+  panel.hidden = !willOpen;
+  const btn = document.querySelector(`[data-more="${key}"]`);
+  if (btn) btn.textContent = willOpen ? '收起' : '话术 / 反向关键词';
+  if (willOpen) hOpen.add(key); else hOpen.delete(key);
+  saveOpenPanels();
+}
+
+/**
+ * 抽屉里的「固定话术」块。
+ *
+ * ★ C-46：这块**串在风险人设库后面**——内容来自 config/risk-replies.json
+ *   （每套人设一套话术，按占比在岗），不是另抄一份的静态词表。
+ *   人设口吻改了 → 后台重生成话术 → refreshTypeTemplates() 原地换掉这块，
+ *   不用刷新页面，也不会动用户正在编辑的单选框和反向关键词。
+ */
+/** 这个通用池被哪些类共用（deflect 被 8 个类共用，改一句这 8 类全会变） */
+function poolPeers(pool){
+  const p = pool || 'deflect';
+  return noReplyTypeRows().filter(x => (x.pool || 'deflect') === p).map(x => x.label || x.key);
+}
+
+/**
+ * 正在编辑哪一类的通用话术组 —— 存**类的 key**，不是 pool 名。
+ * ★ 2026-10-19 踩过：deflect 被 9 个类共用，按 pool 记会让这 9 个抽屉同时渲染编辑框，
+ *   页面上出现 9 个同 id 的 textarea，保存时根本不知道该读哪个。
+ */
+let editingKey = null;
+
+function tplHtml(t){
+  const personas = Array.isArray(t.personaTemplates) ? t.personaTemplates : [];
+  const generic = Array.isArray(t.templates) ? t.templates : [];
+  const pool = t.pool || 'deflect';
+  const peers = poolPeers(pool);
+  const lines = (arr) => `<div class="hLines">${arr.map(x => `<div class="hLine">${escapeHtml(x)}</div>`).join('')}</div>`;
+  const numbered = (arr) => `<div class="hLines">${arr.map((x, i) => `<div class="hLine"><i class="hNo">${i + 1}</i>${escapeHtml(x)}</div>`).join('')}</div>`;
+
+  const personaBlock = personas.length
+    ? personas.map(p => `<div class="hWho">${escapeHtml(p.name)} · ${p.percent}%（风险人设库在岗，实际用这套）</div>${lines(p.lines)}`).join('')
+    : '<p class="kv" style="margin:0 0 8px">⚠ 风险人设库还没有在岗话术 —— 底下这套通用话术先顶着。去第 3 节点「生成话术」后，这里会自动换成人设自己的口吻。</p>';
+
+  /**
+   * ★ C-47：通用池从「折一行」改成**直接列出 + 可就地编辑**。
+   *   作者原话：「通用池也列出来吧，要不然我不知道里面的话术是什么，觉得不好也没法改。」
+   *   池是多类共用的一份数据，所以标题里必须写明共用范围，否则改完会以为只影响当前类。
+   */
+  const shareNote = peers.length > 1
+    ? `<div class="hWho">这组由 <b>${peers.length}</b> 个类共用：${escapeHtml(peers.join('、'))} —— <b>改一处，这些类一起变</b>。</div>`
+    : '<div class="hWho">这类专用的一组（模板回复时从这里随机抽一条）。</div>';
+
+  const editing = editingKey === t.key;
+  const editBtn = editing
+    ? ''
+    : `<button type="button" class="sm" style="margin-left:auto" onclick="editPoolTemplates('${t.key}')">编辑这组</button>`;
+
+  const genericBlock = editing
+    ? `<div class="hPanelH" style="margin-top:12px">通用兜底话术 · 编辑中<span class="kv" style="font-weight:400">一行一条，最多 200 条，单条 ≤60 字</span></div>
+       ${shareNote}
+       <textarea class="hInput hTa" id="poolEditor" spellcheck="false" placeholder="一行一条" style="height:${Math.min(Math.max(generic.length * 26 + 20, 120), 330)}px">${escapeHtml(generic.join('\n'))}</textarea>
+       <div class="hBtns">
+         <button type="button" class="sm primary" onclick="savePoolTemplates('${t.key}')">保存这组话术</button>
+         <button type="button" class="sm" onclick="cancelPoolEdit()">取消</button>
+         <span class="kv">保存后立刻生效，下一次「模板回复」就用新句子，不用重启。</span>
+       </div>`
+    : generic.length
+      ? `<div class="hPanelH" style="margin-top:12px">通用兜底话术 · ${generic.length} 条${editBtn}<span class="kv" style="font-weight:400">风险人设都抽不到时用这套</span></div>
+         ${shareNote}${numbered(generic)}`
+      : `<div class="hPanelH" style="margin-top:12px">通用兜底话术 · 0 条${editBtn}<span class="kv" style="font-weight:400">风险人设都抽不到时用这套</span></div>
+         <p class="kv" style="margin:0 0 8px">这一类还没有配固定话术 —— 点「编辑这组」填几条，否则选「模板回复」时无话可发。</p>`;
+
+  return `<div class="hPanelH" style="margin-top:12px">固定话术<span class="kv" style="font-weight:400">跟随风险人设库${t.enabled ? '；当前是「不回复」，这套暂不生效' : '；当前是「模板回复」，会从下面抽一条'}</span></div>
+    <p class="kv" style="margin:0 0 9px">人设口吻改了、话术重新生成后，上面人设那部分会<b>自动更新</b>，不用刷新页面；底下通用池是你自己维护的，不会被覆盖。</p>
+    ${personaBlock}${genericBlock}`;
+}
+
+/** 重渲染所有抽屉里的话术块（切编辑态 / 保存后刷新用） */
+function rerenderTplBlocks(){
+  for (const t of noReplyTypeRows()){
+    const el = document.getElementById('tpl_' + t.key);
+    if (el) el.innerHTML = tplHtml(t);
+  }
+}
+
+/** C-47：把某一类的通用话术切成编辑态（同时只允许一处编辑） */
+function editPoolTemplates(key){
+  /**
+   * 从 A 类切到同池的 B 类时，把 A 里「改了还没保存」的内容带到内存里再重绘。
+   * 否则同一个池在两处各显示一份，切过去看到的是旧内容，保存一下就把刚改的冲没了。
+   */
+  if (editingKey && editingKey !== key){
+    const ta = $('poolEditor');
+    const cur = noReplyTypeRows().find((x) => x.key === editingKey);
+    if (ta && cur){
+      const lines = String(ta.value || '').split('\n').map(s => s.trim()).filter(Boolean);
+      if (lines.length){
+        const curPool = cur.pool || 'deflect';
+        for (const t of noReplyTypeRows()) if ((t.pool || 'deflect') === curPool) t.templates = lines.slice();
+      }
+    }
+  }
+  editingKey = key;
+  rerenderTplBlocks();
+  const ta = $('poolEditor');
+  if (ta){
+    ta.focus();
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+  }
+}
+
+function cancelPoolEdit(){
+  editingKey = null;
+  rerenderTplBlocks();
+}
+
+/**
+ * 保存一组通用话术（config/templates.json 的 templates[pool]）。
+ * 只提交 poolTemplates —— patchRules 是按字段更新的，不会碰字数上限、处理方式这些。
+ * ★ 保存后同池的所有类在页面上一起换，不做「只改当前类」的假象
+ *   （deflect 被 9 个类共用，只换一个类会让人以为各自独立）。
+ */
+async function savePoolTemplates(key){
+  const ta = $('poolEditor');
+  const row = noReplyTypeRows().find((x) => x.key === key);
+  if (!ta || !row) return;
+  const pool = row.pool || 'deflect';
+  const lines = String(ta.value || '').split('\n').map(s => s.trim()).filter(Boolean);
+  if (!lines.length){ toast('至少留 1 条，否则这一类选「模板回复」时无话可发', 'err'); return; }
+  const { data } = await post('/api/rules', { poolTemplates: { [pool]: lines } });
+  if (!data || !data.ok){
+    const errs = ((data && data.errors) || [data && data.error || '保存失败']).filter(Boolean);
+    const box = $('rulesMsg');
+    if (box) box.innerHTML = `<div class="errbox"><b>这组话术没保存：</b><ul>${errs.map(e => `<li>${escapeHtml(e)}</li>`).join('')}</ul></div>`;
+    toast(errs[0] || '保存失败', 'err');
+    return;
+  }
+  for (const t of noReplyTypeRows()){
+    if ((t.pool || 'deflect') === pool) t.templates = lines.slice();
+  }
+  editingKey = null;
+  rerenderTplBlocks();
+  toast(`通用话术已保存 · ${lines.length} 条，立即生效`);
+}
+
+/** 只换「固定话术」块：风险人设一变就调用，绝不动用户正在编辑的控件 */
+function applyTypeTemplates(list){
+  if (!Array.isArray(list) || !list.length) return;
+  const rows = noReplyTypeRows();
+  for (const item of list){
+    const t = rows.find(x => x && x.key === item.key);
+    if (!t) continue;
+    if (Array.isArray(item.personaTemplates)) t.personaTemplates = item.personaTemplates;
+    if (Array.isArray(item.templates)) t.templates = item.templates;
+    if (item.pool) t.pool = item.pool;
+  }
+  for (const t of rows){
+    // 正在编辑的那一类跳过：重渲染会把 textarea 里改了一半的内容冲掉
+    if (editingKey && t.key === editingKey) continue;
+    const el = document.getElementById('tpl_' + (t && t.key));
+    if (el) el.innerHTML = tplHtml(t);
+  }
+}
+
+/** 拉一次最新话术（轻接口，不重绘人设/规则表单） */
+async function refreshTypeTemplates(){
+  try {
+    const { data } = await api('/api/risk-personas');
+    if (!data || !data.ok) return;
+    if (data.riskPersonas) STATE.riskPersonas = data.riskPersonas;
+    applyTypeTemplates(data.typeTemplates);
+  } catch(_) {}
+}
+
+/** 渲染「评论类型 / 怎么处理 / 说明」表：每类二选一，下面挂可展开的抽屉 */
+function renderHandlingTable(){
+  const box = $('policyList');
+  if (!box) return;
+  const typeRows = noReplyTypeRows();
+  /** 每类的处置（2026-10-20 三值）：skip 不回复 / template 用模板 / reply 正常回复 */
+  const actionOf = (t) => t.action || (t.enabled ? 'skip' : 'template');
+  const skipRows = typeRows.filter(t => actionOf(t) === 'skip');
+  const tplRows = typeRows.filter(t => actionOf(t) === 'template');
+  const replyRows = typeRows.filter(t => actionOf(t) === 'reply');
+  // 折叠时的概要：一眼看出总共几类、各选了什么，不用展开 15 行
+  if ($('policySummary')){
+    $('policySummary').textContent =
+      `${typeRows.length} 类 · ${skipRows.length} 类不回复 · ${tplRows.length} 类用模板` +
+      `${replyRows.length ? ` · ${replyRows.length} 类正常回复` : ''} · 点开设置`;
+  }
+  const rows = typeRows.map(t => {
+    const key = t.key;
+    const cur = actionOf(t);
+    const choice = `<label class="hOpt"><input type="radio" name="h_${key}" value="skip"${cur === 'skip' ? ' checked' : ''}> 不回复</label>
+         <label class="hOpt"><input type="radio" name="h_${key}" value="template"${cur === 'template' ? ' checked' : ''}> 用模板</label>
+         <label class="hOpt"><input type="radio" name="h_${key}" value="reply"${cur === 'reply' ? ' checked' : ''}> 正常回复</label>
+         <button type="button" class="hBtn" data-more="${key}" onclick="toggleTypePanel('${key}')">话术 / 反向关键词</button>`;
+
+    const allow = Array.isArray(t.allow) ? t.allow : [];
+
+    return `<div class="rRow${cur === 'skip' ? ' skip' : ''}">
+      <div class="rName">${escapeHtml(t.label || key)}</div>
+      <div class="hChoice">${choice}</div>
+      <div class="rNote">${escapeHtml(t.note || '')}</div>
+      <div class="hPanel" id="hPanel_${key}" hidden>
+        <div class="hPanelH">反向关键词<span class="kv" style="font-weight:400">本类风险词都没命中时才算放行（同句还有风险词 → 按风险处理）</span></div>
+        <input class="hInput" id="allow_${key}" value="${escapeHtml(allow.join(', '))}" placeholder="用逗号分隔，例：人体艺术, 健身服">
+        <p class="kv" style="margin:7px 0 0">至少 2 个字。命中后这条评论按普通评论正常回复；<b>但如果同一句里还有本类的风险关键词，仍按风险处理（不回）</b>。留空 = 不启用；改完点本节底部「保存规则」。</p>
+        <div class="hTpl" id="tpl_${key}">${tplHtml(t)}</div>
+      </div>
+    </div>`;
+  }).join('');
+  box.innerHTML = `<div class="rTable">
+      <div class="rHead"><span>评论类型</span><span>怎么处理</span><span>说明</span></div>
+      ${rows}
+    </div>
+    <p class="kv" style="margin:-6px 0 0">
+      三种处置，除了「合作待办」要你亲自谈，其余每条评论最后一定是这三种之一：
+      <b>不回复</b> = 直接跳过，判过一次就记住，之后零成本；
+      <b>用模板</b> = 用这类对应的固定话术回一句，不花钱，也绝不顺着对方说；
+      <b>正常回复</b> = 走模型生成一句正常的。
+      不管选哪种，<b>拿不准的内容都会先让模型判一道</b>：模型说确定有风险 → 不发；说拿不准 → 用模板；说没影响 → 正常回。
+      点每类的「话术 / 反向关键词」可以看固定话术、配例外词。改完要点下面的<b>「保存规则」</b>才生效。
+    </p>`;
+
+  // 重渲染后把之前展开的抽屉还原（否则保存一次全关上，得重新一个个点）
+  for (const key of hOpen){
+    const panel = document.getElementById('hPanel_' + key);
+    if (!panel) continue;
+    panel.hidden = false;
+    const btn = box.querySelector(`[data-more="${key}"]`);
+    if (btn) btn.textContent = '收起';
+  }
+}
+
+/** 自定义不回复规则的本地草稿（增删改都先改这里，点「保存规则」才落盘） */
+let nrRules = [];
+let nrDirty = false;
+let nrEditingId = '';
+let nrSource = 'manual';
+
+function nrCopy(items){
+  return (Array.isArray(items) ? items : []).map(x => ({ ...x, keywords: [...(x.keywords || [])] }));
+}
+
+function renderRules(){
+  const r = STATE.rules;
+  $('rMax').value = r.maxChars;
+  $('rMin').value = r.minChars;
+  $('rCap').value = r.maxRepliesPerRun;
+  if ($('rWorkCap')) $('rWorkCap').value = r.maxRepliesPerWorkTotal ?? 0;
+  $('rMaxNote').textContent = `平台硬上限 ${r.hardCap} 字。当前生效值 ${r.effectiveMax} 字。`;
+  // 每类二选一：值直接来自 risk-policy.json 的 action（skip = 不回复）
+  renderHandlingTable();
+  if ($('colThreaded')) $('colThreaded').checked = r.allowThreaded !== false;
+  if ($('dupCap')) $('dupCap').value = r.duplicateReplyCap ?? 0;
+  // 没有未保存的改动时，跟随服务端真相；有改动就保留草稿（避免刷新把刚加的规则冲掉）
+  if (!nrDirty) nrRules = nrCopy(r.noReply && r.noReply.items);
+  renderNoReplyRules();
+}
+
+function renderNoReplyRules(){
+  const box = $('noReplyList');
+  if (!box) return;
+  const badge = $('nrCount');
+  if (badge){
+    badge.hidden = !nrRules.length;
+    badge.textContent = `${nrRules.length} 条`;
+  }
+  if (!nrRules.length){
+    box.innerHTML = '<div class="rEmpty">还没有自定义规则。想拦「问价格」「要链接」这类具体内容，就点右上角「＋ 新增规则」，用一句话让 AI 生成。</div>';
+    return;
+  }
+  box.innerHTML = nrRules.map(rule => `
+    <div class="nrCard${rule.enabled === false ? ' rOff' : ''}" data-id="${escapeHtml(rule.id)}">
+      <div class="nrCardMain">
+        <label class="rOn"><input type="checkbox" ${rule.enabled !== false ? 'checked' : ''}
+          onchange="toggleNrRule('${escapeHtml(rule.id)}', this.checked)">启用</label>
+        <b>${escapeHtml(rule.name)}</b>
+        ${rule.source === 'ai' ? '<span class="nrTag">AI</span>' : ''}
+        <span class="kv">${(rule.keywords || []).length} 个关键词${rule.regex ? ' + 正则' : ''}</span>
+      </div>
+      ${rule.desc ? `<div class="nrDesc">${escapeHtml(rule.desc)}</div>` : ''}
+      <div class="nrWords">
+        ${(rule.keywords || []).map(k => `<span class="nrWord">${escapeHtml(k)}</span>`).join('')}
+        ${rule.regex ? `<span class="nrWord regex">/${escapeHtml(rule.regex)}/</span>` : ''}
+      </div>
+      <div class="nrCardFoot">
+        <button class="linkbtn" type="button" onclick="editNrRule('${escapeHtml(rule.id)}')">编辑</button>
+        <button class="linkbtn danger-link" type="button" onclick="removeNrRule('${escapeHtml(rule.id)}')">删除</button>
+      </div>
+    </div>`).join('');
+}
+
+function openNrPanel(){
+  const panel = $('nrPanel');
+  if (!panel) return;
+  resetNrDraft();
+  nrEditingId = '';
+  nrSource = 'manual';
+  $('nrGenMsg').textContent = '';
+  $('nrCommitBtn').textContent = '加入列表';
+  panel.hidden = false;
+  $('nrPrompt').focus();
+}
+
+function closeNrPanel(){
+  const panel = $('nrPanel');
+  if (panel) panel.hidden = true;
+  nrEditingId = '';
+}
+
+/** 不调 AI、直接自己写关键词（没配 key 或规则很明确时用） */
+function manualNrDraft(){
+  nrSource = 'manual';
+  $('nrDraft').hidden = false;
+  $('nrName').focus();
+  const msg = $('nrGenMsg');
+  if (msg){ msg.style.color = 'var(--muted)'; msg.textContent = '直接填名字和关键词，再点「加入列表」。'; }
+}
+
+function resetNrDraft(){
+  for (const id of ['nrPrompt','nrName','nrDesc','nrKeywords','nrRegex']){
+    const el = $(id);
+    if (el) el.value = '';
+  }
+  const draft = $('nrDraft');
+  if (draft) draft.hidden = true;
+  const msg = $('nrDraftMsg');
+  if (msg) msg.textContent = '';
+}
+
+/** 一句话 → 关键词（只生成草稿，不落盘；作者看过、改过才进列表） */
+async function genNrRule(){
+  const prompt = ($('nrPrompt').value || '').trim();
+  if (!prompt) return toast('先写一句：什么评论不回复', 'warn');
+  const btn = $('nrGenBtn');
+  const msg = $('nrGenMsg');
+  btn.disabled = true;
+  btn.textContent = '生成中…（约 10–30 秒）';
+  if (msg){ msg.style.color = 'var(--muted)'; msg.textContent = '正在把这句话变成关键词…'; }
+  try {
+    const { data } = await post('/api/no-reply/generate', { prompt });
+    if (!data || !data.ok){
+      if (msg){ msg.style.color = 'var(--bad)'; msg.textContent = (data && data.error) || '生成失败'; }
+      return;
+    }
+    $('nrName').value = data.name || '';
+    $('nrDesc').value = data.desc || '';
+    $('nrKeywords').value = (data.keywords || []).join('\n');
+    $('nrRegex').value = data.regex || '';
+    nrSource = 'ai';
+    $('nrDraft').hidden = false;
+    if (msg){
+      msg.style.color = 'var(--ok)';
+      msg.textContent = `生成了 ${(data.keywords || []).length} 个关键词` +
+        (data.droppedCount ? `（另有 ${data.droppedCount} 个不合适已丢弃）` : '') +
+        ' —— 检查一下，没问题点「加入列表」';
+    }
+  } catch (error){
+    if (msg){ msg.style.color = 'var(--bad)'; msg.textContent = `生成失败：${error.message}`; }
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'AI 生成规则';
+  }
+}
+
+/** 草稿 → 本地列表（仍然没落盘，要再点最下面「保存规则」） */
+function commitNrRule(){
+  const name = ($('nrName').value || '').trim();
+  const desc = ($('nrDesc').value || '').trim();
+  const regex = ($('nrRegex').value || '').trim();
+  const keywords = ($('nrKeywords').value || '')
+    .split(/[\n,，、;；]/).map(s => s.trim()).filter(Boolean);
+  const msg = $('nrDraftMsg');
+  const fail = (text) => { if (msg){ msg.style.color = 'var(--bad)'; msg.textContent = text; } };
+
+  if (!name) return fail('给这条规则起个名字');
+  if (name.length > 20) return fail('规则名最多 20 个字');
+  if (!keywords.length && !regex) return fail('至少要有 1 个关键词，或写一条正则');
+  const bad = keywords.find(w => w.length < 2 || w.length > 12);
+  if (bad) return fail(`关键词「${bad}」长度需在 2–12 字之间`);
+  if (regex){
+    try { new RegExp(regex); }
+    catch (error){ return fail(`正则写不通：${error.message.slice(0, 60)}`); }
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const existing = nrRules.find(r => r.id === nrEditingId);
+  const rule = {
+    id: existing ? existing.id : `nr-${Date.now().toString(36)}`,
+    name,
+    desc,
+    keywords: [...new Set(keywords)],
+    regex,
+    enabled: existing ? existing.enabled !== false : true,
+    source: nrSource,
+    created: existing ? existing.created : today,
+    updated: today,
+  };
+  if (existing) nrRules = nrRules.map(r => r.id === existing.id ? rule : r);
+  else nrRules = [...nrRules, rule];
+  nrDirty = true;
+  renderNoReplyRules();
+  closeNrPanel();
+  toast(existing ? `已更新「${name}」，记得点「保存规则」` : `已加入「${name}」，记得点「保存规则」`);
+}
+
+function toggleNrRule(id, on){
+  nrRules = nrRules.map(r => r.id === id ? { ...r, enabled: Boolean(on) } : r);
+  nrDirty = true;
+  renderNoReplyRules();
+}
+
+function editNrRule(id){
+  const rule = nrRules.find(r => r.id === id);
+  if (!rule) return;
+  nrEditingId = id;
+  nrSource = rule.source === 'ai' ? 'ai' : 'manual';
+  $('nrPrompt').value = '';
+  $('nrName').value = rule.name || '';
+  $('nrDesc').value = rule.desc || '';
+  $('nrKeywords').value = (rule.keywords || []).join('\n');
+  $('nrRegex').value = rule.regex || '';
+  $('nrDraft').hidden = false;
+  $('nrCommitBtn').textContent = '更新到列表';
+  $('nrGenMsg').textContent = '';
+  const msg = $('nrDraftMsg');
+  if (msg){ msg.style.color = 'var(--muted)'; msg.textContent = '改完点「更新到列表」。上面的输入框只用于让 AI 重新生成。'; }
+  $('nrPanel').hidden = false;
+  $('nrName').focus();
+}
+
+function removeNrRule(id){
+  const rule = nrRules.find(r => r.id === id);
+  if (!rule) return;
+  if (!confirm(`删除规则「${rule.name}」？\n\n删掉后这类评论会恢复为正常回复；已经发出去的回复不受影响。\n（还要点最下面「保存规则」才真正写进配置。）`)) return;
+  nrRules = nrRules.filter(r => r.id !== id);
+  nrDirty = true;
+  renderNoReplyRules();
+  toast(`已删除「${rule.name}」，点「保存规则」生效`);
+}
+
+/* ---------- 自动回复 ---------- */
+
+/** 时刻显示：今天/昨天只给时分秒，更早的补上日期 —— 否则「上一轮 13:41」分不清是哪天 */
+function fmtWhen(iso){
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const hm = d.toLocaleTimeString('zh-CN', { hour12: false });
+  const day = (x) => x.toDateString();
+  const now = new Date();
+  if (day(d) === day(now)) return '今天 ' + hm;
+  const y = new Date(now.getTime() - 86400000);
+  if (day(d) === day(y)) return '昨天 ' + hm;
+  return d.toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+/** 状态行拆成多行：挤成一长串时「下一轮 / 上一轮」会被折成三行，读不出来 */
+function autoStatusLines(a){
+  a = a || {};
+  const sch = a.schedule || {};
+  const lines = [];
+  if (a.fileError) lines.push('⚠ ' + a.fileError);
+  // 自动调度被抑制时必须说清楚（测试模式 / 另一个控制台在跑），否则看起来像"开着却不跑"
+  if (a.suppressedReason) lines.push('⚠ ' + a.suppressedReason);
+
+  const state = [];
+  if (a.activeNow) state.push('自动一轮正在运行…' + (a.headless ? '（后台，无窗口）' : ''));
+  state.push(a.headless ? '后台运行（不弹窗）' : '窗口模式');
+  if (sch.enabled) {
+    state.push(`时段 ${sch.start}–${sch.end}` + (a.windowActive ? '（当前在时段内）' : '（当前在时段外，自动挂起）'));
+  }
+  if (!a.enabled) state.push('当前关闭。');
+  lines.push(state.join(' · '));
+
+  if (a.enabled && a.nextRunAt) lines.push('下一轮：' + fmtWhen(a.nextRunAt));
+  if (a.lastRunAt) {
+    let last = '上一轮：' + fmtWhen(a.lastRunAt);
+    if (a.lastRunReplied !== null && a.lastRunReplied !== undefined) {
+      last += `（回了 ${a.lastRunReplied} 条` + (a.lastRunTotal ? ` · 采到 ${a.lastRunTotal} 条` : '') + '）';
+    } else if (a.lastExitCode === 0) {
+      last += '（正常结束）';
+    } else if (a.lastExitCode !== null && a.lastExitCode !== undefined) {
+      last += '（退出码 ' + a.lastExitCode + '，详情看第 6 节输出）';
+    }
+    lines.push(last);
+  }
+  return lines;
+}
+
+function paintAutoStatus(a){
+  const el = $('autoStatus');
+  if (!el) return;
+  el.innerHTML = autoStatusLines(a).map(escapeHtml).join('<br>');
+}
+
+function renderAuto(){
+  const a = STATE.auto || {};
+  if ($('autoEnabled')) $('autoEnabled').checked = a.enabled === true;
+  if ($('autoInterval')) $('autoInterval').value = a.intervalMinutes ?? a.defaultInterval ?? 10;
+  if ($('autoHeadless')) $('autoHeadless').checked = a.headless === true;
+  const sch = a.schedule || {};
+  if ($('autoSchEnabled')) $('autoSchEnabled').checked = sch.enabled === true;
+  if ($('autoSchStart')) $('autoSchStart').value = sch.start || '08:00';
+  if ($('autoSchEnd')) $('autoSchEnd').value = sch.end || '23:00';
+
+  paintAutoStatus(a);
+}
+
+/**
+ * 只刷状态文字、不碰任何输入控件。
+ * 为什么不一整块重渲染：这里每 5 秒跑一次，若把 checkbox / 间隔输入框也写回去，
+ * 作者正在改但没保存的设置会被静默改回旧值（人设那边踩过同样的坑）。
+ *
+ * 后端可能是还没重启的旧版（没有 /api/auto）：退回 /api/state 取 auto 段，
+ * 但那是"全量状态"接口，10 秒一次就够——不能拿它按 5 秒刷，读盘太频繁。
+ */
+let autoApiMissing = false;
+let autoTick = 0;
+
+async function refreshAutoStatus(){
+  autoTick += 1;
+  let snap = null;
+  if (!autoApiMissing) {
+    const { status, data } = await api('/api/auto');
+    if (data && data.ok && data.auto) snap = data.auto;
+    else if (status === 404) autoApiMissing = true;
+  }
+  if (!snap && autoApiMissing) {
+    if (autoTick % 4 !== 0) return;
+    const full = await api('/api/state');
+    if (full.data && full.data.auto) snap = full.data.auto;
+  }
+  if (!snap) return;
+  // 只合并运行态，重绘只写 #autoStatus —— 输入控件一律不动
+  STATE.auto = { ...(STATE.auto || {}), ...snap };
+  paintAutoStatus(STATE.auto);
+}
+
+async function saveAutoSettings(){
+  const enabled = $('autoEnabled').checked;
+  const intervalMinutes = Number($('autoInterval').value);
+  const headless = $('autoHeadless') ? $('autoHeadless').checked : false;
+  const schedule = {
+    enabled: $('autoSchEnabled') ? $('autoSchEnabled').checked : false,
+    start: $('autoSchStart') ? $('autoSchStart').value : '08:00',
+    end: $('autoSchEnd') ? $('autoSchEnd').value : '23:00'
+  };
+  const { data } = await post('/api/auto', { enabled, intervalMinutes, headless, schedule });
+  if (!data.ok){ toast(data.error || '保存失败', 'err'); return; }
+  STATE.auto = data.auto;
+  renderAuto();
+  $('autoSaved').textContent = '已保存 · ' + new Date().toLocaleTimeString();
+  toast(enabled ? '自动回复已开启' + (headless ? '（后台运行，不弹窗）' : '') : '自动回复已关闭');
+}
+
+async function loadState(){
+  const { data } = await api('/api/state');
+  if (!data || !data.ok){ toast('读取配置失败：' + (data && data.error || '未知错误'), 'err'); return; }
+  STATE = data;
+  /* 实例名以后端 config/instance.json 为准（多副本同机运行时靠它区分）。
+     后端没给就保留 HTML 里的静态名，不覆盖成空。 */
+  const instName = String(data.instanceName || '').trim();
+  if (instName){
+    document.title = instName;
+    const h1 = document.getElementById('appTitle');
+    if (h1) h1.textContent = instName;
+  }
+  initSavedNotes(); // 以服务端值为新的比较基准（DOM 里未保存的输入由 renderWorks 自己收编）
+  // 选中的人设可能已被别的标签页删掉 → 重新挑一个，避免表单指向不存在的项
+  if (!selectedPersonaId || !personaItems().some(p => p.id === selectedPersonaId)){
+    selectedPersonaId = initialPersonaId();
+  }
+  renderStatus(); renderToday(); renderScope(); renderWorks(); renderPersonaList(); renderPersona(); renderRules(); renderPreviewWorks(); renderAuto(); renderRotation(); renderCooperation(); renderRiskPolicy(); renderRiskLib(); renderLastRun();
+}
+
+/* ---------- 操作 ---------- */
+
+async function setScope(mode){
+  const { data } = await post('/api/works', { mode });
+  if (!data.ok) { toast('保存失败：'+data.error, 'err'); return; }
+  STATE.scope.mode = data.mode;
+  renderScope();
+  toast('运行范围已切换');
+}
+
+let workSaveTimer = null;
+function toggleWork(key, enabled){
+  const w = STATE.works.find(x => x.key === key);
+  if (w) w.enabled = enabled;
+  // 勾了作品但运行范围还是「只跑最新」→ 勾选不会生效，自动切过去免得白勾
+  const needSwitch = enabled && STATE.scope.mode !== 'selected';
+  if (needSwitch){
+    STATE.scope.mode = 'selected';
+    renderScope();
+    toast('已自动把运行范围切到「按勾选跑」');
+  }
+  renderWorks();
+  clearTimeout(workSaveTimer);
+  workSaveTimer = setTimeout(saveWorks, 300);
+}
+
+async function saveWorks(){
+  const enabled = {};
+  for (const w of STATE.works) enabled[w.key] = w.enabled;
+  const { data } = await post('/api/works', { mode: STATE.scope.mode, enabled });
+  if (!data.ok){ toast('作品开关保存失败：'+data.error, 'err'); return; }
+  STATE.scope.mode = data.mode;
+  renderScope();
+}
+
+/* ---------- 视频说明：自动保存 + 关页兜底 ---------- */
+
+let savedNotes = {};       // key -> 服务端已确认的值（比较基准）
+const noteTimers = {};     // key -> 防抖定时器
+
+function initSavedNotes(){
+  savedNotes = {};
+  for (const w of (STATE.works || [])) savedNotes[w.key] = w.contextNote || '';
+}
+
+function noteStatusTag(el, text, cls){
+  const row = el && el.closest ? el.closest('.work') : null;
+  const tag = row && row.querySelector('.ctx-tag');
+  if (!tag) return;
+  tag.textContent = text;
+  tag.className = 'ctx-tag' + (cls ? ' ' + cls : '');
+}
+
+function queueNoteSave(el){
+  const key = el.dataset.ctxKey;
+  if (!key) return;
+  noteStatusTag(el, '待保存…', 'pending');
+  clearTimeout(noteTimers[key]);
+  noteTimers[key] = setTimeout(() => saveWorkNote(key, el.value, el), 700);
+}
+
+/** 重渲染前把 DOM 里未保存的值收进 STATE：列表重建时不会丢掉正在编辑/刚填的内容 */
+function syncNotesFromDom(){
+  document.querySelectorAll('[data-ctx-key]').forEach(el => {
+    const w = STATE.works.find(x => x.key === el.dataset.ctxKey);
+    if (w) w.contextNote = el.value.trim();
+  });
+}
+
+/** 关页面前还有哪些没保存的（DOM 现值 ≠ 服务端已确认值） */
+function collectDirtyNotes(){
+  const dirty = {};
+  document.querySelectorAll('[data-ctx-key]').forEach(el => {
+    const k = el.dataset.ctxKey;
+    const v = el.value.trim();
+    if ((savedNotes[k] ?? '') !== v) dirty[k] = { note: v };
+  });
+  return dirty;
+}
+
+/**
+ * 保存某条作品的「这条视频在玩什么梗」。
+ * 三条纪律都来自 2026-10-16 的实测翻车（"改了又没了"）：
+ *   ① 不能只靠 onchange —— 它要失焦才触发，填完直接关窗口就白填。
+ *      改为：输入防抖 700ms 自动保存 + 失焦立即保存 + 关页前 keepalive 兜底补发。
+ *   ② 比较基准必须是 savedNotes（服务端已确认值），不能用 STATE 现值 ——
+ *      renderWorks 重渲染前会收编 DOM 现值，用它当基准会把"该保存的"判成"没变"。
+ *   ③ 保存成功后不再 renderWorks()（重建 DOM 会打断正在输入的其他框），
+ *      只就地更新这一行的状态标签。
+ * 服务端是**合并式**保存：只提交这一条，别的作品说明原样保留；空串 = 显式清除。
+ */
+async function saveWorkNote(key, value, el){
+  const note = String(value || '').trim();
+  if ((savedNotes[key] ?? '') === note){
+    if (el) noteStatusTag(el, note ? '已填梗' : '没填梗', note ? 'on' : '');
+    return; // 与已确认值一致，不打扰服务端
+  }
+  const { data } = await post('/api/work-context', { works: { [key]: { note } } });
+  if (!data.ok){
+    toast('视频说明保存失败：' + (data.error || '未知错误'), 'err');
+    if (el) noteStatusTag(el, '未保存！', 'err');
+    return;
+  }
+  savedNotes[key] = note;
+  const w = STATE.works.find(x => x.key === key);
+  if (w) w.contextNote = note;
+  if (el) noteStatusTag(el, note ? '已保存 ✓' : '已清空', note ? 'on' : '');
+  renderPreviewWorks(); // 只重建「试一句话」的下拉，不碰输入框
+}
+
+let pvWorkInit = false;
+function renderPreviewWorks(){
+  const sel = $('pvWork');
+  if (!sel) return;
+  const prev = sel.value;
+  sel.innerHTML = `<option value="">（不指定作品）</option>` + STATE.works.map(w =>
+    `<option value="${escapeHtml(w.key)}">${escapeHtml(w.title)} · ${escapeHtml((w.publishText || '').replace(/^发布于/, ''))}${w.contextNote ? ' ★已填梗' : ''}</option>`
+  ).join('');
+  if (!pvWorkInit){
+    // 首次默认选最新那条：真实运行一定会带语境，预览也该带上，否则两边对不上
+    pvWorkInit = true;
+    sel.value = STATE.works[0] ? STATE.works[0].key : '';
+  } else if (prev && STATE.works.some(w => w.key === prev)){
+    sel.value = prev;
+  } else if (!prev){
+    sel.value = ''; // 用户主动选的「不指定」，尊重
+  } else {
+    sel.value = STATE.works[0] ? STATE.works[0].key : '';
+  }
+  updatePvWorkNote();
+}
+
+function updatePvWorkNote(){
+  const sel = $('pvWork');
+  const note = $('pvWorkNote');
+  if (!sel || !note) return;
+  const w = STATE.works.find(x => x.key === sel.value);
+  if (!w){
+    note.textContent = '不指定作品：判定只按评论字面走，会比真实运行更保守。';
+    return;
+  }
+  note.textContent = w.contextNote
+    ? '这条视频的说明：' + w.contextNote
+    : '这条视频还没填「在玩什么梗」。标题会自动带上，但填了说明判定更准。';
+}
+
+function toggleAll(on){
+  const kw = $('workSearch').value.trim().toLowerCase();
+  for (const w of STATE.works){
+    if (kw && !w.title.toLowerCase().includes(kw)) continue;
+    w.enabled = on;
+  }
+  if (on && STATE.scope.mode !== 'selected') STATE.scope.mode = 'selected';
+  renderScope(); renderWorks();
+  saveWorks();
+  toast(on ? '已全选（当前筛选范围内）' : '已清空');
+}
+
+async function refreshWorks(){
+  $('refreshBtn').disabled = true;
+  const { data } = await post('/api/refresh-works');
+  if (!data.ok){ toast(data.error, 'err'); $('refreshBtn').disabled = false; return; }
+  toast('正在拉取作品列表…');
+  pollRunUntilDone(async (data) => {
+    $('refreshBtn').disabled = false;
+    await loadState();
+    // 按真实退出码提示 —— 曾经不管成败都说"已更新"，登录失效时会被误导
+    if (data && data.exitCode === 0){
+      toast('作品列表已更新');
+    } else {
+      toast('拉取失败（退出码 ' + (data && data.exitCode != null ? data.exitCode : '?') + '）—— 详情看页面最下面的运行输出', 'err');
+    }
+  });
+}
+
+function collectPersona(){
+  collectExamples();
+  return {
+    enabled: $('pEnabled').checked,
+    identity: $('pIdentity').value.trim(),
+    self_call: $('pSelf').value.trim(),
+    audience_call: $('pAudience').value.trim(),
+    signature: $('pSignature').value.trim(),
+    tone: $('pTone').value.trim(),
+    traits: linesToArr($('pTraits').value),
+    catchphrases: linesToArr($('pCatch').value),
+    banned_words: linesToArr($('pBanned').value),
+    extra_rules: linesToArr($('pRules').value),
+    examples: personaExamples
+  };
+}
+
+/**
+ * 保存人设 = 把当前这套的最终版写回人设库。
+ * 没有「恢复上一次保存」：点了保存，以后就都是这一版（作者 2026-10-17 明确要求）。
+ */
+async function savePersona(){
+  const item = currentPersonaItem();
+  if (!item){ toast('人设库还没加载好，稍等一下再点', 'warn'); return; }
+
+  const name = $('pName').value.trim();
+  const tagline = $('pTagline').value.trim();
+  if (!name){
+    $('personaMsg').innerHTML = `<div class="errbox">人设名称不能为空 —— 它是在人设库里认出这套人设的唯一标识。</div>`;
+    $('pName').focus();
+    return;
+  }
+
+  const { data } = await post('/api/persona', { id: item.id, name, tagline, persona: collectPersona() });
+  const box = $('personaMsg');
+
+  if (!data.ok){
+    box.innerHTML = `<div class="errbox"><b>没能保存：</b><ul>${(data.errors||[data.error||'未知错误']).map(e=>`<li>${escapeHtml(e)}</li>`).join('')}</ul></div>`;
+    toast('保存失败，看下面的原因', 'err');
+    return;
+  }
+
+  applyPersonaItems(data.items);
+  selectedPersonaId = data.item.id;
+  rememberSelection(data.item.id);
+  box.innerHTML = (data.warnings && data.warnings.length)
+    ? `<div class="warnbox"><b>已保存，但有两点提醒：</b><ul>${data.warnings.map(w=>`<li>${escapeHtml(w)}</li>`).join('')}</ul></div>`
+    : '';
+  personaDirty = false;
+  renderPersonaList(); renderRotation(); renderPersona();
+  $('personaSaved').textContent = '已保存 · ' + new Date().toLocaleTimeString();
+  toast('人设已保存，下一轮生效');
+  // 口径有变化时后端会在后台重生成它的配套话术（约 20–60 秒），这里轮询状态给反馈
+  watchRoleSync(data.item.id, data.item.name);
+}
+
+/**
+ * 盯着「人设话术同步」状态：generating → 提示等待，done → 说明已生成，
+ * error → 指到运行输出，skipped → 口径没变不用重来。
+ */
+function watchRoleSync(personaId, name){
+  let tries = 0;
+  const tick = async () => {
+    tries += 1;
+    try {
+      const { data } = await api('/api/state');
+      const st = (data.personas && data.personas.roleSync && data.personas.roleSync[personaId]) || null;
+      if (st && st.status === 'generating' && tries < 45){
+        $('personaSaved').textContent = `已保存 · 正在生成「${name}」的配套话术…（约 ${tries * 2}s）`;
+        setTimeout(tick, 2000);
+        return;
+      }
+      if (st && st.status === 'done'){
+        $('personaSaved').textContent = '已保存 · 配套话术已生成';
+        toast(`「${name}」的配套话术已生成`);
+        // C-46：第 4 节每类的「固定话术」跟这套人设话术是同一份东西，这里立刻换掉
+        refreshTypeTemplates();
+      } else if (st && st.status === 'error'){
+        $('personaSaved').textContent = '已保存 · 话术生成失败';
+        toast('人设已保存，但配套话术生成失败（看第 6 节输出）', 'warn');
+      } else if (st && st.status === 'skipped'){
+        $('personaSaved').textContent = '已保存 · 口径没变，话术无需重生成';
+      }
+    } catch(_) {}
+  };
+  setTimeout(tick, 1500);
+}
+
+async function saveRules(){
+  // 第 4 节：每类三选一，值直接是 skip / template / reply → 服务端原样写进 risk-policy 的 action
+  const noReplyTypes = {};
+  for (const t of noReplyTypeRows()){
+    const el = document.querySelector(`input[name="h_${t.key}"]:checked`);
+    if (el) noReplyTypes[t.key] = el.value;
+  }
+  // C-43：每类的反向关键词（逗号 / 顿号 / 分号 / 换行都算分隔）
+  const allowKeywords = {};
+  for (const t of noReplyTypeRows()){
+    const el = $('allow_' + t.key);
+    if (!el) continue;
+    allowKeywords[t.key] = String(el.value || '')
+      .split(/[,，、;；\n]/)
+      .map(s => s.trim())
+      .filter(Boolean);
+  }
+  // C-47：如果这时抽屉里正开着某组通用话术的编辑框，一起存了 ——
+  // 否则「保存规则」会重绘整张表，把改了一半的话术静默冲掉。
+  const poolTemplates = {};
+  if (editingKey){
+    const ta = $('poolEditor');
+    const row = noReplyTypeRows().find((x) => x.key === editingKey);
+    const lines = ta ? String(ta.value || '').split('\n').map(s => s.trim()).filter(Boolean) : [];
+    if (row && lines.length) poolTemplates[row.pool || 'deflect'] = lines;
+  }
+  const { data } = await post('/api/rules', {
+    maxChars: Number($('rMax').value),
+    minChars: Number($('rMin').value),
+    maxRepliesPerRun: Number($('rCap').value),
+    maxRepliesPerWorkTotal: $('rWorkCap') ? Number($('rWorkCap').value) : 0,
+    allowThreaded: $('colThreaded') ? $('colThreaded').checked : true,
+    duplicateReplyCap: $('dupCap') ? Number($('dupCap').value) : 0,
+    noReplyRules: nrRules,
+    noReplyTypes,
+    allowKeywords,
+    poolTemplates: Object.keys(poolTemplates).length ? poolTemplates : undefined
+  });
+  const box = $('rulesMsg');
+  if (!data.ok){
+    box.innerHTML = `<div class="errbox"><b>没能保存：</b><ul>${(data.errors||[data.error||'未知错误']).map(e=>`<li>${escapeHtml(e)}</li>`).join('')}</ul></div>`;
+    toast('保存失败', 'err');
+    return;
+  }
+  box.innerHTML = '';
+  nrDirty = false;
+  $('rulesSaved').textContent = '已保存 · ' + new Date().toLocaleTimeString();
+  // 只把「规则」这一块刷成服务端真相，不走整个 loadState()：
+  // loadState 会重渲染人设表单，把「改了还没点保存」的人设改动静默清掉（2026-10-16 实测复现）。
+  const { data: fresh } = await api('/api/state');
+  editingKey = null; // 话术已随本次保存落盘，退出编辑态，避免重绘后还挂着旧输入框
+  if (fresh && fresh.ok && fresh.rules){ STATE.rules = fresh.rules; renderRules(); }
+  toast('规则已保存');
+}
+
+/* ---------- 预览 ---------- */
+
+const OUTCOME_TEXT = { pass:['通过','ok-t'], blocked:['拦下','bad-t'], skipped:['跳过','kv'] };
+/** 「级别」直接显示英文枚举值没人看得懂，翻成人话 */
+const LEVEL_TEXT = {
+  hard: '硬拦截（永不回复）',
+  soft: '软拦截（转人工）',
+  no_reply_rule: '自定义不回复规则',
+  policy: '这一类被设为不回复',
+  rate_cap: '达到本轮额度',
+  per_user: '单用户额度已满',
+  oversize: '评论超长',
+  no_template: '没有可用话术',
+  no_reply: '出口检查未通过',
+  cached: '已判定不回（缓存）'
+};
+
+async function doPreview(){
+  const text = $('pvText').value.trim();
+  if (!text){ toast('先输入一条评论','warn'); return; }
+  $('pvBtn').disabled = true;
+  $('pvBtn').textContent = '生成中…';
+  $('previewOut').innerHTML = '<p class="kv">正在按当前人设与规则生成，请稍候（通常 5–20 秒）…</p>';
+  const { data } = await post('/api/preview', {
+    text,
+    username: $('pvUser').value.trim(),
+    workKey: $('pvWork') ? $('pvWork').value : ''
+  });
+  $('pvBtn').disabled = false;
+  $('pvBtn').textContent = '试一下';
+
+  if (!data.ok){
+    $('previewOut').innerHTML = `<div class="errbox">${escapeHtml(data.error || '预览失败')}</div>`;
+    return;
+  }
+  const pv = data.preview;
+  const r = pv.result || {};
+  const head = r.action === 'reply'
+    ? `<div class="bubble reply"><b>会这样回复</b><span class="txt">${escapeHtml(r.replyMessage)}</span>
+        <div class="kv" style="margin-top:6px">${r.charCount} 字 · ${sourceText(r.source)}${r.fallbackReason ? ' · 原因：'+escapeHtml(r.fallbackReason) : ''}</div></div>`
+    : `<div class="bubble skip"><b>不会回复（留空跳过）</b><span class="txt">${escapeHtml(r.reason)}</span>
+        <div class="kv" style="margin-top:6px">级别：${escapeHtml(LEVEL_TEXT[r.level] || r.level || '-')}</div></div>`;
+
+  const steps = (pv.steps||[]).map(s => {
+    const [label, cls] = OUTCOME_TEXT[s.outcome] || ['?','kv'];
+    return `<li><span class="st">${escapeHtml(s.stage)}</span><span class="${cls}">${label}</span>
+            <span class="rs">${escapeHtml(s.detail || s.reason || '')}</span></li>`;
+  }).join('');
+
+  const rot = (pv.persona || {}).rotation;
+  const pvPersonaName = ((pv.persona || {}).name || (rot && rot.pickedName) || '').trim();
+  const personaLine = pv.persona && pv.persona.applied
+    ? `人设已生效：「${escapeHtml(pvPersonaName)}」${escapeHtml(pv.persona.summary)}` +
+      (rot && rot.mode === 'random' ? `（随机池抽中，共 ${(rot.pool||[]).length} 套）` : '')
+    : `人设未生效${pv.persona && pv.persona.enabled ? '（提示词里缺注入点）' : '（已关闭）'}`;
+
+  const wc = pv.workContext || {};
+  const wcLine = wc.hasContext
+    ? `视频语境已带上：${escapeHtml(wc.title || '')}`
+      + ((wc.tags && wc.tags.length) ? `（话题 ${escapeHtml(wc.tags.join('、'))}）` : '')
+      + (wc.note ? ' · 已用你填的梗说明' : ' · <span style="color:var(--warn)">还没填梗说明</span>')
+    : `<span style="color:var(--warn)">这次预览没有视频语境 → 判定只按字面走，会比真实运行更保守</span>`;
+
+  $('previewOut').innerHTML = head
+    + `<ul class="steps">${steps}</ul>`
+    + `<p class="kv" style="margin-top:10px">${personaLine} · 生成方式：${escapeHtml((pv.generation||{}).actualMode || '-')}
+       ${(pv.generation||{}).model ? '（'+escapeHtml(pv.generation.model)+'）' : ''} ·
+       预览不含「${(pv.runtimeGatesOmitted||[]).join('、')}」这几项取决于历史的限制</p>`
+    + `<p class="kv">${wcLine}</p>`
+    + (wc.block ? `<details class="ctxbox"><summary>模型这次实际看到的视频语境</summary><pre>${escapeHtml(wc.block)}</pre></details>` : '');
+}
+
+function sourceText(s){
+  return s === 'llm' ? '模型直接生成' : s === 'template_fallback' ? '模型被拒后回退模板' : '模板';
+}
+
+/* ---------- 跑一轮 ---------- */
+
+let polling = null;
+
+function pollRunUntilDone(done){
+  clearInterval(polling);
+  polling = setInterval(async () => {
+    const { data } = await api('/api/run');
+    if (!data || !data.ok) return;
+    if (data.kind) renderRun(data);
+    if (!data.running){
+      clearInterval(polling); polling = null;
+      renderRun(data);
+      $('run1Btn').disabled = false; $('run2Btn').disabled = false;
+      if (done) done(data);
+    }
+  }, 1200);
+}
+
+function renderRun(d){
+  $('runLog').textContent = (d.lines || []).join('\n');
+  $('runLog').scrollTop = $('runLog').scrollHeight;
+  if (d.running){
+    $('runState').textContent = '运行中…';
+  } else if (d.exitCode !== null && d.exitCode !== undefined){
+    $('runState').textContent = d.exitCode === 0 ? '上次运行正常结束（退出码 0）' : `上次运行异常结束（退出码 ${d.exitCode}）`;
+  }
+}
+
+async function doRun(stage){
+  if (stage === 2){
+    const ok = confirm('这一步会真的把回复发到抖音评论区，且不可撤回。\n\n确认继续吗？');
+    if (!ok) return;
+    const typed = prompt('请再输入 SEND（大写）确认发送：');
+    if (typed !== 'SEND'){ toast('已取消发送','warn'); return; }
+  }
+  const body = { stage };
+  if (stage === 2) body.confirm = 'SEND';
+  const { data } = await post('/api/run', body);
+  if (!data.ok){ toast(data.error || '启动失败', 'err'); return; }
+  $('run1Btn').disabled = true; $('run2Btn').disabled = true;
+  toast(stage === 2 ? '开始发送…' : '开始检查…');
+  $('runLog').textContent = '正在启动…';
+  pollRunUntilDone((data) => {
+    loadState();
+    if (data && data.exitCode === 0){
+      toast('这一轮跑完了');
+    } else {
+      toast('这一轮没有正常结束（退出码 ' + (data && data.exitCode != null ? data.exitCode : '?') + '）—— 详情看下面的运行输出', 'err');
+    }
+  });
+}
+
+/* ---------- 启动 ---------- */
+
+// 人设表单任何输入 → 标记「有未保存的改动」（事件委托：动态添加的示例行也覆盖）
+// ★ 只绑在 #personaForm 上：AI 描述框、固定/随机开关都在它外面，
+//   在那些地方打字不该被当成"人设改了没保存"。
+document.addEventListener('input', (e) => {
+  if (e.target && e.target.closest && e.target.closest('#personaForm')){
+    markPersonaDirty();
+    if (e.target.tagName === 'TEXTAREA') autoGrow(e.target);
+  }
+});
+
+// 随机池里勾选/取消 → 立刻告诉用户「还没保存」（池子是动态渲染的，用委托）
+document.addEventListener('change', (e) => {
+  if (e.target && e.target.matches && e.target.matches('[data-rot]')) refreshRotationDirty();
+});
+
+// 关页面 / 刷新前的最后一道兜底（「改了又没了」的根治措施之一）
+window.addEventListener('beforeunload', (e) => {
+  // ① 视频说明：未保存的一次性补发。keepalive 让请求在页面卸载后仍会送达
+  const dirty = collectDirtyNotes();
+  if (Object.keys(dirty).length){
+    try {
+      fetch('/api/work-context', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ works: dirty }),
+        keepalive: true,
+      });
+    } catch (_) {}
+  }
+  // ② 人设：有未保存的改动 → 按浏览器标准方式请用户确认，不静默丢
+  if (personaDirty){
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
+
+/* ---------- 风险处置策略（C-26） ---------- */
+
+/* ---------- 第 3 节：话术与占比编辑（C-32） ---------- */
+
+const RISK_POOL_META = [
+  ['dodge', '装傻 · 对方把我当卖家（退款 / 砍价）'],
+  ['tease', '调戏 · 索要密钥 / 指令注入'],
+  ['retort', '接住 · 辱骂'],
+  ['unclear', '没听懂 · 法务 / 隐私 / 平台 / 说不清'],
+];
+
+function riskReadyCardHtml(r, open){
+  return `
+    <details class="rEditRole${r.active ? '' : ' rOff'}" data-persona="${escapeHtml(r.personaId)}" data-role="${escapeHtml(r.roleId || '')}" data-rolename="${escapeHtml(r.roleName || r.personaName)}">
+      <summary>
+        <label class="rOn" onclick="event.stopPropagation()" title="勾上 = 参与风险回复的占比抽选">
+          <input type="checkbox" class="rActive" ${r.active ? 'checked' : ''} onchange="recalcRiskPercents()">负责
+        </label>
+        <b>${escapeHtml(r.personaName)}</b>
+        <span class="kv rRoleStat"></span>
+        <span class="rWeightWrap">占比
+          <input type="number" class="rWeightInput" min="0" max="100" step="1" value="${Number(r.weight) || 0}"
+                 oninput="recalcRiskPercents()">
+          <span class="rPct">%</span>
+        </span>
+        <button class="sm" type="button" onclick="regenRole(event, this)" title="按这套人设现在的口吻重写话术（会覆盖现有四组）">重生成</button>
+        <button class="sm danger rDel" type="button" onclick="revokeRole(event, this)" title="删掉话术，人设本身保留">删除话术</button>
+      </summary>
+      <div class="rEditPools">
+        ${RISK_POOL_META.map(([k, label]) => `
+          <div class="rEditPool">
+            <label>${label}<span class="cnt"></span></label>
+            <textarea data-pool="${k}" spellcheck="false"
+                      oninput="recalcRiskPercents()">${escapeHtml((r.pools && r.pools[k] ? r.pools[k] : []).join('\n'))}</textarea>
+          </div>`).join('')}
+      </div>
+    </details>`;
+}
+
+/** 人设 id → 名字（页面里的人设库副本） */
+function personaNameById(id){
+  if (!id) return '';
+  const hit = personaItems().find(p => p.id === id);
+  return hit ? hit.name : '';
+}
+
+function riskLibView(){
+  return (STATE && STATE.riskPersonas) || { ready: [], pending: [], legacy: [], pool: [], totals: {}, warnings: [] };
+}
+
+/** 占比换算：与 scripts/risk-personas.mjs 的 distributePercent 同算法（最大余数法，合计正好 100） */
+function distributePercentJs(list){
+  if (!list.length) return [];
+  const weights = list.map(v => Math.max(0, Number(v) || 0));
+  const total = weights.reduce((a, b) => a + b, 0);
+  if (total <= 0){
+    const base = Math.floor(100 / list.length);
+    const rest = 100 - base * list.length;
+    return list.map((_, i) => base + (i < rest ? 1 : 0));
+  }
+  const exact = weights.map(w => (w / total) * 100);
+  const floors = exact.map(v => Math.floor(v));
+  let left = 100 - floors.reduce((a, b) => a + b, 0);
+  const order = exact.map((v, i) => ({ i, f: v - Math.floor(v) })).sort((a, b) => b.f - a.f || a.i - b.i);
+  for (let k = 0; left > 0 && k < order.length; k += 1){ floors[order[k].i] += 1; left -= 1; }
+  return floors;
+}
+
+function renderRiskLib(){
+  const v = riskLibView();
+  const sum = $('riskLibSum');
+  if (sum){
+    const t = v.totals || {};
+    const warn = (v.warnings || []).find(w => w.level === 'bad');
+    sum.innerHTML = `有话术 <b>${t.ready || 0}</b> 套 · 未生成 <b>${t.pending || 0}</b> 套 · ` +
+      `在岗 <b>${t.active || 0}</b> 套 · 合计 <b class="${warn ? 'bad-t' : ''}">${t.percentSum || 0}%</b>`;
+  }
+
+  const ready = $('riskReady');
+  const pending = $('riskPending');
+  const readyCount = $('riskReadyCount');
+  const pendingCount = $('riskPendingCount');
+  if (readyCount) readyCount.textContent = `${(v.ready || []).length} 套`;
+  if (pendingCount) pendingCount.textContent = `${(v.pending || []).length} 套`;
+  if (ready){
+    ready.innerHTML = (v.ready || []).length
+      ? v.ready.map((r, i) => riskReadyCardHtml(r, i === 0)).join('')
+      : '<div class="rEmpty">还没有任何一套人设生成过风险话术。到下面「未生成话术」里点「生成话术」。</div>';
+  }
+  if (pending){
+    const rows = (v.pending || []).map(riskPendingCardHtml).join('');
+    pending.innerHTML = (v.pending || []).length
+      ? rows
+      : '<div class="rEmpty">所有人设都已经有话术了。</div>';
+  }
+
+  const legacy = $('riskLegacy');
+  if (legacy){
+    const items = v.legacy || [];
+    legacy.hidden = !items.length;
+    legacy.innerHTML = items.length
+      ? `<div class="warnbox">有 ${items.length} 套话术没绑定现存人设（${items.map(r => escapeHtml(r.roleName)).join('、')}），不参与风险回复。` +
+        `给对应人设重新生成一次话术即可接上。</div>`
+      : '';
+  }
+
+  // 警告（配置层能看出问题的那种）直接摆出来，不要藏在日志里
+  const box = $('riskLibMsg');
+  if (box){
+    const ws = (v.warnings || []);
+    box.innerHTML = ws.length
+      ? ws.map(w => `<div class="${w.level === 'bad' ? 'errbox' : 'warnbox'}" style="margin-top:6px">${escapeHtml(w.text)}</div>`).join('')
+      : '';
+  }
+  recalcRiskPercents();
+}
+
+/** 未生成话术的卡片：只剩「生成」一个动作 */
+function riskPendingCardHtml(item){
+  const sync = (STATE.personas && STATE.personas.roleSync && STATE.personas.roleSync[item.personaId]) || null;
+  let msg = '未生成';
+  let cls = '';
+  if (sync){
+    if (sync.status === 'generating'){ msg = '生成中…（约 20–60 秒）'; }
+    else if (sync.status === 'done'){ msg = sync.message || '已生成'; cls = 'ok'; }
+    else if (sync.status === 'error'){ msg = sync.message || '生成失败'; cls = 'bad'; }
+    else if (sync.status === 'pending'){ msg = '未生成'; }
+  }
+  const disabled = sync && sync.status === 'generating';
+  return `<div class="rPend" data-persona="${escapeHtml(item.personaId)}">
+    <b>${escapeHtml(item.personaName)}</b>
+    <span class="kv">${escapeHtml(item.personaTagline || '')}</span>
+    <button class="primary sm" type="button" onclick="genRiskFor(this)" ${disabled ? 'disabled' : ''}>生成话术</button>
+    <span class="rPendMsg ${cls}">${escapeHtml(msg)}</span>
+  </div>`;
+}
+
+/** 读页面上的「有话术」卡片 → 提交用的结构（含未保存的编辑） */
+function readRiskCards(){
+  const cards = [...document.querySelectorAll('#riskReady .rEditRole')];
+  return cards.map((card) => {
+    const pools = {};
+    for (const [k] of RISK_POOL_META){
+      const ta = card.querySelector(`textarea[data-pool="${k}"]`);
+      pools[k] = (ta ? ta.value : '').split('\n').map((s) => s.trim()).filter(Boolean);
+    }
+    const box = card.querySelector('.rActive');
+    return {
+      personaId: card.dataset.persona,
+      roleId: card.dataset.role,
+      /**
+       * 角色名用 data-rolename（= 话术角色名），不是人设名：
+       * 人设名可以到 20 字，话术角色名限 12 字，混用会在保存时报「名字太长」。
+       */
+      name: card.dataset.rolename || (card.querySelector('summary b') || {}).textContent || '',
+      active: Boolean(box && box.checked),
+      weight: Number(card.querySelector('.rWeightInput').value) || 0,
+      pools,
+      card,
+    };
+  });
+}
+
+/** 改权重 / 勾选 / 增删句子时实时显示占比与句数（纯显示，不提交） */
+function recalcRiskPercents(){
+  const cards = readRiskCards();
+  const activeOnes = cards.filter((c) => c.active);
+  const percents = distributePercentJs(activeOnes.map((c) => c.weight));
+  let cursor = 0;
+  for (const item of cards){
+    const lines = Object.values(item.pools).reduce((n, arr) => n + arr.length, 0);
+    const pct = item.active ? (percents[cursor++] ?? 0) : 0;
+    const stat = item.card.querySelector('.rRoleStat');
+    if (stat) stat.textContent = item.active ? `${pct}% · ${lines} 句` : `未勾选 · ${lines} 句`;
+    const pctEl = item.card.querySelector('.rPct');
+    if (pctEl) pctEl.textContent = item.active ? '%' : '%（不算）';
+    for (const ta of item.card.querySelectorAll('textarea')){
+      const cnt = ta.parentElement.querySelector('.cnt');
+      if (cnt) cnt.textContent = `${ta.value.split('\n').filter((s) => s.trim()).length} 句`;
+    }
+  }
+  const sum = $('riskLibSum');
+  if (sum){
+    const t = riskLibView().totals || {};
+    const bad = activeOnes.length === 0;
+    sum.innerHTML = `有话术 <b>${t.ready || 0}</b> 套 · 未生成 <b>${t.pending || 0}</b> 套 · ` +
+      `已勾选 <b>${activeOnes.length}</b> 套 · 合计 <b class="${bad ? 'bad-t' : ''}">${bad ? '0（没人回）' : '100'}%</b>`;
+  }
+}
+
+/** 把勾选的几套拉成平均占比 */
+function equalizeRiskWeights(){
+  const cards = readRiskCards();
+  const active = cards.filter((c) => c.active);
+  if (!active.length) return toast('先勾选至少一套负责', 'warn');
+  for (const item of active) item.card.querySelector('.rWeightInput').value = 100;
+  recalcRiskPercents();
+  toast('占比已平均分配 —— 记得点「保存占比」', 'warn');
+}
+
+/** 保存：话术正文 + 谁负责 + 占比，一次写进 risk-replies.json */
+async function saveRiskLib(){
+  const msg = $('riskLibMsg');
+  const btn = $('riskLibSaveBtn');
+  const cards = readRiskCards();
+  if (!cards.length) return;
+  const activeOnes = cards.filter((c) => c.active);
+  if (!activeOnes.length){
+    return toast('至少要勾一套人设负责，否则风险评论没人回', 'warn');
+  }
+  /** 权重统一按百分比提交：文件里存什么，页面显示什么，不留下"50/30/10/10 还是 5/3/1/1"的歧义 */
+  const percents = distributePercentJs(activeOnes.map((c) => c.weight));
+  let cursor = 0;
+  const roles = cards.map((c) => ({
+    id: c.roleId,
+    name: c.name,
+    personaId: c.personaId,
+    active: c.active,
+    weight: c.active ? (percents[cursor++] ?? 0) : 0,
+    pools: c.pools,
+  }));
+
+  if (btn) btn.disabled = true;
+  if (msg){ msg.style.color = 'var(--muted)'; msg.textContent = '正在校验并保存…'; }
+  try {
+    const { data } = await post('/api/risk-replies', { roles });
+    if (!data || !data.ok){
+      if (msg){
+        msg.style.color = 'var(--bad)';
+        const list = ((data && data.errors) || []).slice(0, 8)
+          .map((e) => `· ${escapeHtml(e.scope || '')}${e.line ? `「${escapeHtml(e.line)}」` : ''}：${escapeHtml(e.reason || '')}`)
+          .join('<br>');
+        msg.innerHTML = `没保存（${(data && (data.errors || []).length) || 0} 处不合格）：<br>${list}`;
+      }
+      return;
+    }
+    if (data.replies) STATE.riskPolicy = Object.assign({}, STATE.riskPolicy, { replies: data.replies });
+    await refreshRiskLib();
+    if (msg){
+      msg.style.color = 'var(--ok)';
+      msg.innerHTML = `已保存 ${data.saved.roles} 套人设、共 ${data.saved.lines} 句（下一轮生效，不用重启）`;
+    }
+    toast('风险人设库已保存');
+  } catch (error) {
+    if (msg){ msg.style.color = 'var(--bad)'; msg.textContent = `保存失败：${error.message}`; }
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+/** 拉一次风险人设库（不重绘整个人设表单，避免把没保存的编辑冲掉） */
+async function refreshRiskLib(){
+  const { data } = await api('/api/risk-personas');
+  if (!data || !data.ok) return false;
+  STATE.riskPersonas = data.riskPersonas;
+  if (data.roleSync && STATE.personas){ STATE.personas.roleSync = data.roleSync; }
+  // C-46：同一份数据顺手刷新第 4 节的固定话术（两处必须同源，否则改完人设那边还是旧句子）
+  applyTypeTemplates(data.typeTemplates);
+  renderRiskLib();
+  renderRiskPolicy();
+  return true;
+}
+
+/** 给「未生成话术」里的人设生成一套（后台跑，页面轮询进度） */
+async function genRiskFor(btn){
+  const row = btn.closest('.rPend');
+  const personaId = row.dataset.persona;
+  const name = (row.querySelector('b') || {}).textContent || '';
+  const msgEl = row.querySelector('.rPendMsg');
+  if (btn){ btn.disabled = true; btn.textContent = '生成中…'; }
+  if (msgEl){ msgEl.className = 'rPendMsg'; msgEl.textContent = '正在生成（约 20–60 秒）…'; }
+  try {
+    const { data } = await post('/api/risk-personas/generate', { personaId });
+    if (!data || !data.ok){
+      if (msgEl){ msgEl.className = 'rPendMsg bad'; msgEl.textContent = (data && data.error) || '生成失败'; }
+      if (btn){ btn.disabled = false; btn.textContent = '生成话术'; }
+      return;
+    }
+    if (msgEl){ msgEl.textContent = `正在按「${name}」的口吻写…`; }
+    await pollRiskGen(personaId);
+  } catch (error) {
+    if (msgEl){ msgEl.className = 'rPendMsg bad'; msgEl.textContent = `生成失败：${error.message}`; }
+    if (btn){ btn.disabled = false; btn.textContent = '生成话术'; }
+  }
+}
+
+/** 轮询生成进度：done / error 就停，最多等 3 分钟 */
+async function pollRiskGen(personaId){
+  for (let i = 0; i < 45; i += 1){
+    await new Promise((r) => setTimeout(r, 4000));
+    const ok = await refreshRiskLib();
+    if (!ok) return;
+    const sync = (STATE.personas && STATE.personas.roleSync && STATE.personas.roleSync[personaId]) || null;
+    if (!sync) continue;
+    if (sync.status === 'done' || sync.status === 'error'){
+      if (sync.status === 'done') toast('风险话术已生成，已并入在岗池');
+      else toast(`生成失败：${sync.message || '未知原因'}`, 'err');
+      return;
+    }
+  }
+  toast('生成还在进行，稍后刷新页面看结果', 'warn');
+}
+
+/** 重生成：按人设现在的口吻覆盖四组话术（人设改过之后用） */
+async function regenRole(event, btn){
+  if (event){ event.preventDefault(); event.stopPropagation(); }
+  const card = btn.closest('.rEditRole');
+  const personaId = card.dataset.persona;
+  const name = (card.querySelector('summary b') || {}).textContent || '';
+  if (!confirm(`按「${name}」现在的口吻重写四组话术？\n\n会覆盖这套人设现有的全部风险话术，手动改过的句子会丢。`)) return;
+  const old = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '生成中…';
+  try {
+    const { data } = await post('/api/risk-personas/generate', { personaId });
+    if (!data || !data.ok){
+      toast((data && data.error) || '生成失败', 'err');
+      return;
+    }
+    await pollRiskGen(personaId);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = old;
+  }
+}
+
+/** 删除话术 → 人设回到「未生成话术」（人设本身不删） */
+async function revokeRole(event, btn){
+  if (event){ event.preventDefault(); event.stopPropagation(); }
+  const card = btn.closest('.rEditRole');
+  const personaId = card.dataset.persona;
+  const name = (card.querySelector('summary b') || {}).textContent || '';
+  if (!confirm(`删除「${name}」的风险话术？\n\n人设本身会保留，只是回到「未生成话术」；` +
+    `如果它正在负责，其他勾选的人会自动重新分配占比。`)) return;
+  btn.disabled = true;
+  try {
+    const { data } = await post('/api/risk-personas/revoke', { personaId });
+    if (!data || !data.ok){
+      toast((data && data.error) || '删除失败', 'err');
+      return;
+    }
+    STATE.riskPersonas = data.riskPersonas;
+    // C-46：删了话术，第 4 节那套「固定话术」也得跟着消失，不能还挂着旧句子
+    await refreshRiskLib();
+    toast(data.rebalanced ? '已删除，剩余人设占比已自动补齐' : '已删除');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+
+function renderRiskPolicy(){
+  const rp = STATE.riskPolicy;
+
+  const voices = $('riskVoices');
+  if (voices){
+    /**
+     * 这里显示的是**链路1 的实际在岗池**（风险人设库），不是"所有角色"——
+     * 勾掉的人不该出现在概览里，否则页面和真跑对不上。
+     */
+    const pool = (STATE.riskPersonas && STATE.riskPersonas.pool) || [];
+    voices.innerHTML = pool.length
+      ? pool.map(v => `<div class="rVoice"><b>${escapeHtml(v.personaName)}</b><span>${v.percent}% · 负责风险回复</span></div>`).join('')
+      : '<div class="rVoice" style="color:var(--muted)">风险回复暂无专属人设，走通用口吻</div>';
+  }
+
+  /**
+   * ★ C-41：原来这里还有一张「剩下的类型怎么回」只读表。
+   *   现在 15 类全都在第 4 节一张表里选，这张表已经没有任何信息增量 ——
+   *   留着只会让人以为"第 3 节也能改"。整块删掉，只剩人设池。
+   */
+
+  const info = $('riskCacheInfo');
+  if (!info) return;
+  const c = (rp && rp.cache) || null;
+  if (!c){
+    info.textContent = '缓存状态读取失败（不影响裁决，缓存只是省钱的加速层）';
+    return;
+  }
+  if (c.corrupt){
+    info.innerHTML = '<span style="color:var(--bad)">缓存文件损坏。下一轮第一次写入时会自动重建，不影响使用。</span>';
+    return;
+  }
+  const when = (iso) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? '' : d.toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
+  if (!c.total){
+    info.innerHTML = '还没有记录。第一次判出「纯图片/表情 · 政治 · 未成年 · 色情 · 暴力 → 不回」时会自动写入，之后同样的评论就不再花 token 了。';
+    return;
+  }
+  const cats = Object.entries(c.byCategory || {}).map(([k, v]) => `${SKIP_CATEGORY_TEXT[k] || k} ${v}`).join('、');
+  info.innerHTML =
+    `已记住 <b>${c.total}</b> 条判定为不回的评论（${escapeHtml(cats) || '—'}），累计省下 <b>${c.totalHits || 0}</b> 次判定调用。` +
+    (c.latest ? ` 最近一条：${escapeHtml(when(c.latest))}。` : '') +
+    ` ${c.maxAgeDays || 7} 天后自动过期；回复规则 / 风险提示词 / 处置策略任一改动会整批作废。` +
+    (c.invalidated ? '<br><span style="color:var(--warn)">⚠️ 判据刚变过，旧结论已作废，下一轮会重新判一遍。</span>' : '');
+}
+
+async function clearSkipCache(){
+  const ok = confirm(
+    '清空「已判定不回」缓存？\n\n' +
+    '清空后，之前判过不回的评论会在下一轮重新判一遍（会花 token）。\n' +
+    '平时不用点这个——改了规则，缓存本来就会自动整批作废。'
+  );
+  if (!ok) return;
+  const { data } = await post('/api/skip-cache', {});
+  if (!data.ok){ toast(data.error || '清空失败', 'err'); return; }
+  STATE.riskPolicy = { ...STATE.riskPolicy, cache: data.cache };
+  renderRiskPolicy();
+  toast(`已清空 ${data.removed} 条，下一轮会重新判`);
+}
+
+/* ---------- 合作待办（C-25） ---------- */
+
+function renderCooperation(){
+  const box = $('coopList');
+  if (!box) return;
+  const c = STATE.cooperation || {};
+  const items = c.items || [];
+  const badge = $('coopBadge');
+  if (badge){
+    badge.style.display = c.newCount ? '' : 'none';
+    badge.textContent = c.newCount ? `${c.newCount} 条待处理` : '';
+  }
+  if (c.error){
+    box.innerHTML = `<div class="warnbox">${escapeHtml(c.error)}</div>`;
+    return;
+  }
+  if (!items.length){
+    box.innerHTML = '<p class="kv">还没有合作线索。</p>';
+    return;
+  }
+  const when = (iso) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? '' : d.toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
+  box.innerHTML = items.map(it => `
+    <div class="coop${it.done ? ' done' : ''}">
+      <div class="coop-h">
+        <b>${escapeHtml(it.username || '（未知用户）')}</b>
+        <span class="kv">${escapeHtml(it.workTitle || '')}${when(it.at) ? ' · ' + escapeHtml(when(it.at)) : ''}${it.hit ? ' · 命中「' + escapeHtml(it.hit) + '」' : ''}</span>
+      </div>
+      <div class="coop-c">${escapeHtml(it.comment || '')}</div>
+      <div class="coop-f">
+        <span class="coop-r">${it.reply
+          ? '旧记录：机器回过 <b>' + escapeHtml(it.reply) + '</b>（现在合作类已改为不自动回）'
+          : '机器没有回复 · 等你亲自回'}</span>
+        <label class="coop-check" title="勾上即从清单移除，不会再被记回来">
+          <input type="checkbox" onchange="markCoop('${escapeHtml(it.id)}', this)">
+          <span>我已回复</span>
+        </label>
+      </div>
+    </div>`).join('');
+}
+
+/**
+ * ★ C-50：勾「我已回复」= 从待办移除（作者：我回复了以后勾选一下，然后把这个东西删掉）。
+ * 不做"标为已处理但留在列表里"——那样清单只会越滚越长，最后没人看。
+ */
+async function markCoop(id, el){
+  if (el) el.disabled = true;
+  const { data } = await post('/api/cooperation', { id, remove: true });
+  if (!data.ok){
+    if (el){ el.checked = false; el.disabled = false; }
+    toast(data.error || '操作失败', 'err');
+    return;
+  }
+  STATE.cooperation = data.cooperation;
+  renderCooperation();
+  toast('已从合作待办移除');
+}
+
+/* ---------- 章节折叠 ----------
+ * 整页 5800px，其中「人设 / 规则 / 风险」三块占了大半，
+ * 但这几块都是**配一次就不动**的设置，日常真正要看的是范围、作品、运行、待办。
+ * 所以：设置类默认收起，点标题展开；每节收/展的选择记在 localStorage，刷新后保持。
+ *
+ * ★ C-49：存的不再是「节号」而是 `data-key`（works/persona/risk/rules/preview/run/coop）。
+ *   节号会因为插一节、并两节而整体错位 —— 那会让作者存好的折叠状态全部串到别的节上。
+ *   旧格式（纯数字）读进来时按下面的对照表迁移一次，迁移完写回新格式。
+ */
+const COLLAPSE_DEFAULTS = ['rules', 'preview', 'run'];
+const COLLAPSE_STORE = 'douyin-console:collapsed';
+/** 旧节号 → 新 key（c48 及以前存的是节号；5 和 6 合并成 run，去重即可） */
+const OLD_NUM_TO_KEY = { '1': 'works', '2': 'persona', '3': 'rules', '4': 'preview', '5': 'run', '6': 'run', '7': 'coop', '8': 'risk' };
+
+function readCollapseState(){
+  try {
+    const arr = JSON.parse(localStorage.getItem(COLLAPSE_STORE) || 'null');
+    if (!Array.isArray(arr)) return null;
+    if (arr.every((x) => /^[0-9]+$/.test(String(x)))) {
+      const migrated = [...new Set(arr.map((n) => OLD_NUM_TO_KEY[String(n)]).filter(Boolean))];
+      localStorage.setItem(COLLAPSE_STORE, JSON.stringify(migrated));
+      return migrated;
+    }
+    return arr;
+  } catch {
+    return null;
+  }
+}
+
+/** 一节的稳定标识：优先 data-key，没写就退回节号（老节仍能用） */
+function sectionKey(sec){
+  return sec.dataset.key || (sec.querySelector('h2 .num')?.textContent || '').trim();
+}
+
+function setupSectionCollapse(){
+  const saved = readCollapseState();
+  const collapsed = new Set(saved ?? COLLAPSE_DEFAULTS);
+  document.querySelectorAll('section').forEach((sec) => {
+    const h2 = sec.querySelector('h2');
+    const numEl = sec.querySelector('h2 .num');
+    if (!h2 || !numEl || h2.dataset.collapseReady) return;
+    h2.dataset.collapseReady = '1';
+    const key = sectionKey(sec);
+    const chev = document.createElement('span');
+    chev.className = 'chev';
+    chev.textContent = '▼';
+    h2.appendChild(chev);
+    const apply = (on) => {
+      sec.classList.toggle('collapsed', on);
+      h2.title = on ? '点击展开这一节' : '点击收起这一节';
+    };
+    apply(collapsed.has(key));
+    h2.addEventListener('click', () => {
+      apply(!sec.classList.contains('collapsed'));
+      const now = [...document.querySelectorAll('section.collapsed')]
+        .map((s) => sectionKey(s))
+        .filter(Boolean);
+      try {
+        localStorage.setItem(COLLAPSE_STORE, JSON.stringify(now));
+      } catch {
+        /* 隐私模式写不进就算了，不影响折叠本身 */
+      }
+    });
+  });
+}
+
+$('workSearch').addEventListener('input', renderWorks);
+loadState();
+setupSectionCollapse();
+setupOpenPanels();
+// 自动模式跑在后台进程里，页面不刷新就永远停在打开那一刻的时间。
+// 5 秒轮询一次运行态（轻量接口，只读几个字段），切回标签页时立刻补一次。
+setInterval(refreshAutoStatus, 5000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshAutoStatus(); });
+api('/api/run').then(({data}) => {
+  if (data && data.ok && data.kind){ renderRun(data); if (data.running){ $('run1Btn').disabled = true; $('run2Btn').disabled = true; pollRunUntilDone(); } }
+});
+</script>
+</body>
+</html>

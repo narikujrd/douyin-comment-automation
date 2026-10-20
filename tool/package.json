@@ -1,0 +1,48 @@
+{
+  "name": "douyin-creator-tools",
+  "version": "0.1.0",
+    "type": "module",
+  "description": "基于 Playwright 的抖音创作者中心自动化工具：评论导出/回复、作品管理、文章发布。",
+  "keywords": [
+    "douyin",
+    "playwright",
+    "automation",
+    "creator",
+    "comments"
+  ],
+  "author": "narikujrd (https://github.com/narikujrd)",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "auth": "node ./src/auth-douyin.mjs",
+    "view": "node ./src/open-douyin-view.mjs",
+    "works": "node ./src/list-douyin-works.mjs",
+    "comments:export": "node ./src/export-douyin-comments.mjs",
+    "comments:export-all": "node ./src/export-all-douyin-comments.mjs",
+    "comments:interactive": "node ./src/interactive-douyin-comments.mjs",
+    "comments:reply": "node ./src/reply-douyin-comments.mjs",
+    "users": "node ./src/users.mjs",
+    "article:publish": "node ./src/publish-douyin-article.mjs",
+    "imagetext:publish": "node ./src/publish-douyin-imagetext.mjs",
+    "server": "PORT=8765 node ./src/server.mjs",
+    "wordcloud": "node ./src/compute-wordcloud.mjs",
+    "txt2img": "node ./src/txt2img.mjs",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "format": "prettier --write \"src/**/*.mjs\" \"*.json\" \"*.md\"",
+    "format:check": "prettier --check \"src/**/*.mjs\" \"*.json\" \"*.md\""
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.8.0",
+    "express": "^5.2.1",
+    "playwright": "^1.52.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.24.0",
+    "eslint": "^9.24.0",
+    "eslint-config-prettier": "^10.1.2",
+    "prettier": "^3.5.3"
+  }
+}

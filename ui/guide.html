@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>使用指南 · 抖音评论自动回复</title>
+<style>
+  :root{
+    --bg:#f5f6f8; --card:#ffffff; --line:#e4e6eb; --line-soft:#f0f1f3;
+    --text:#1c1e21; --muted:#6b7280; --brand:#2563eb; --brand-soft:#eff4ff;
+    --ok:#0d9f6e; --ok-soft:#e8f7f1; --warn:#b45309; --warn-soft:#fef4e6;
+    --bad:#d92c2c; --bad-soft:#fdecec; --radius:12px;
+    --mono:ui-monospace,"Cascadia Mono","Consolas","Microsoft YaHei",monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.7 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+  .wrap{max-width:860px;margin:0 auto;padding:26px 20px 70px}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:18px}
+  h2{font-size:15.5px;margin:26px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+  h3{font-size:13.5px;margin:16px 0 6px}
+  p{margin:0 0 9px}
+  a{color:var(--brand)}
+  code{background:var(--line-soft);padding:1px 5px;border-radius:4px;font-family:var(--mono);font-size:12px}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin:8px 0 4px}
+  th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+  th{background:var(--line-soft);font-weight:600;white-space:nowrap}
+  .risk{
+    background:#fff5f5;border:1px solid #f3c9c9;border-left:5px solid var(--bad);
+    border-radius:var(--radius);padding:16px 20px;margin:0 0 6px;
+  }
+  .risk h2{border:none;margin:0 0 10px;padding:0;color:var(--bad);font-size:15px}
+  .risk p,.risk li{font-size:13px;color:#7c1d1d}
+  .risk ul{margin:0;padding-left:20px}
+  .risk li{margin-bottom:7px}
+  .risk .seal{margin-top:12px;padding-top:11px;border-top:1px dashed #f0b8b8;font-weight:600}
+  .step{display:flex;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 15px;margin-bottom:9px}
+  .step .n{flex:none;width:24px;height:24px;border-radius:50%;background:var(--brand);color:#fff;font-size:12.5px;font-weight:600;display:flex;align-items:center;justify-content:center}
+  .step .body{flex:1;min-width:0}
+  .step .body > b{display:block;font-size:13.5px;margin-bottom:2px}
+  .step small{color:var(--muted);font-size:12.5px}
+  .tip{background:var(--brand-soft);border:1px solid #d6e2ff;border-radius:10px;padding:11px 15px;font-size:12.5px;color:#1e3a8a;margin:10px 0}
+  .warn{background:var(--warn-soft);border:1px solid #f3e0c0;border-radius:10px;padding:11px 15px;font-size:12.5px;color:#7a4a06;margin:10px 0}
+  .warn ul,.tip ul{margin:4px 0 0;padding-left:20px}
+  footer{margin-top:34px;padding-top:14px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+  footer a{font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>使用指南</h1>
+  <div class="sub">抖音评论自动回复 · 本机控制台 · 全程不出本机</div>
+
+  <div class="risk" id="risk">
+    <h2>风险提示与免责声明（请先读完再使用）</h2>
+    <ul>
+      <li>本工具通过浏览器自动化操作抖音创作者中心，<b>属于平台未授权的手段</b>。平台用户协议与社区规范对自动化行为有限制，可能导致验证码、限流、内容降权，<b>严重时账号被封禁</b>。</li>
+      <li>工具会生成文字评论并<b>以你的账号名义公开发布</b>。模型可能说出不恰当、不准确或让你后悔的话，<b>发布前请自行复核</b>，尤其是批量运行时。</li>
+      <li>评论若涉及他人个人信息、消费纠纷、商业承诺、政治宗教等敏感议题，相应风险与法律责任由你本人承担。</li>
+      <li>本项目按「现状」提供，<b>不附带任何明示或默示担保</b>。作者不对使用本工具造成的账号处罚、流量损失、数据丢失、经济损失、名誉损害、法律纠纷或任何其他直接、间接后果承担责任。</li>
+      <li>是否使用、如何使用、用哪个账号用，<b>全部由你自行判断并自行承担后果</b>。不同意以上任何一条，请立即停止使用并删除本项目。</li>
+    </ul>
+    <div class="seal">继续使用即视为你已阅读、理解并接受上述全部条款。</div>
+  </div>
+
+  <h2>一、三步就能跑起来</h2>
+
+  <div class="step">
+    <div class="n">1</div>
+    <div class="body">
+      <b>填 DeepSeek API Key</b>
+      <small>双击 <code>1-验证密钥.bat</code> → 记事本自动打开密钥文件 → 把 <code>sk-填你自己的key</code> 换成真实 key → Ctrl+S 保存 → 回到黑窗口回车。<b>没有 key 也能开控制台</b>，只是没法生成回复。</small>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="n">2</div>
+    <div class="body">
+      <b>扫码登录抖音</b>
+      <small>双击 <code>2-扫码登录.bat</code> → 弹出浏览器 → 用手机抖音扫屏幕上的码 → 在黑窗口回车。<b>登录态存本机</b>，一次能管很久；过期或换号时重跑这一步。</small>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="n">3</div>
+    <div class="body">
+      <b>打开控制台</b>
+      <small>双击 <code>▶ 抖音回复控制台启动器.bat</code>（或 <code>3-控制台.bat</code>）→ 浏览器自动打开网页控制台。<b>黑窗口要一直开着</b>，关掉就等于停掉控制台。</small>
+    </div>
+  </div>
+
+  <div class="tip">
+    第一次用建议先点第 5 节「试一句话」，看看判定和文案长什么样；再用第 6 节跑一轮「只看不改」；确认没问题再去点「确认发送」。
+  </div>
+
+  <h2>二、控制台每一节管什么</h2>
+
+  <table>
+    <tr><th>节</th><th>作用</th></tr>
+    <tr><td>1 · 运行范围与作品</td><td>决定跑哪些视频。默认「只跑最新作品」，要多个就选「按勾选」再逐个勾。每行下面那格填「这条视频在玩什么梗」——填了它，评论区里的玩梗才不会被当成找茬。</td></tr>
+    <tr><td>2 · 机器人人设</td><td>决定<b>怎么说</b>，不影响<b>该不该说</b>。可手填，也可用一句话让 AI 生成一套。</td></tr>
+    <tr><td>3 · 风险回复人设</td><td>风险类评论由谁来回。和普通回复是<b>两条独立链路</b>，各管各的。</td></tr>
+    <tr><td>4 · 回复规则</td><td>15 类评论每类怎么处置（不回复 / 用模板 / 正常回复），外加自定义不回复规则、字数与数量上限。</td></tr>
+    <tr><td>5 · 试一句话</td><td>粘一句话进去，看它被判成什么、会回什么。<b>不发送、不花钱检验的唯一入口。</b></td></tr>
+    <tr><td>6 · 运行</td><td>手动跑一轮 + 定时自动回复。跑一轮分「只看不改」和「确认发送」两种。</td></tr>
+    <tr><td>7 · 合作待办</td><td>命中合作/商务/报价的评论<b>不自动回</b>，只记在这里等你亲自谈。谈完勾「我已回复」即从清单移除。</td></tr>
+    <tr><td>⚙ 设置（右上角）</td><td>API key、登录状态、浏览器内核、模型，以及「已判定不回」缓存。</td></tr>
+  </table>
+
+  <h2>三、每条评论最后只有三种结局</h2>
+
+  <table>
+    <tr><th>结局</th><th>什么时候</th></tr>
+    <tr><td><b>正常回复</b></td><td>判定「无影响」的普通评论、夸赞、提问、情绪倾诉，走模型按人设生成。</td></tr>
+    <tr><td><b>用模板</b></td><td>模型「拿不准」的评论，拿一句固定话术打岔：不顺着对方说，也不沉默。</td></tr>
+    <tr><td><b>不回复</b></td><td>判定「确定有风险」的评论，直接跳过并记进缓存，下次同样内容不再花钱重判。</td></tr>
+  </table>
+
+  <p style="margin-top:10px">合作待办是唯一的例外：它不进上面三种，而是留给你人工处理。</p>
+
+  <h2>四、三件容易踩的事</h2>
+
+  <div class="warn">
+    <ul>
+      <li><b>别关黑窗口。</b>控制台网页只是壳子，真正的进程在那个黑窗口里。关掉 = 停掉，页面会连不上。</li>
+      <li><b>登录态比 API key 更值钱。</b>它在 <code>tool/.playwright/douyin-profile/</code>，等于账号可被操作，别拷给别人、别传网盘。</li>
+      <li><b>这个网页只在本机能开。</b>地址固定，别人扫不到；但同一台电脑上的其他程序理论上能访问，所以不要把浏览器留给不相干的人。</li>
+    </ul>
+  </div>
+
+  <h2>五、出问题先看这里</h2>
+
+  <table>
+    <tr><th>现象</th><th>怎么办</th></tr>
+    <tr><td>提示「未检测到评论页入口 / 请扫码登录」</td><td>登录态过期了，重跑 <code>2-扫码登录.bat</code>。</td></tr>
+    <tr><td>提示「已有任务在运行」</td><td>上一轮还没跑完。等它结束，或关掉控制台窗口重开。</td></tr>
+    <tr><td>页面顶部红条「版本不一致」</td><td>页面是旧的，按 F5 刷新；还不行就关窗口重开控制台。</td></tr>
+    <tr><td>打不开页面 / 提示端口被占用</td><td>端口被别的程序占了。按提示关掉占用者，或改 <code>config/instance.json</code> 里的 <code>port</code>。</td></tr>
+    <tr><td>双击 .bat 一闪就没了</td><td>先跑 <code>0-环境自检.bat</code>，它会逐条告诉你缺什么。</td></tr>
+  </table>
+
+  <footer>
+    <span>本项目按「现状」提供，使用风险自负。</span>
+    <span>作者 GitHub：<a href="https://github.com/narikujrd" target="_blank" rel="noopener">narikujrd</a></span>
+  </footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,26 @@
+node_modules/
+.playwright/
+comments-output/
+browser-data/
+comment-images/
+default/
+~/
+.history/
+.vscode/
+data/
+
+# Runtime data files
+comment.json
+comments.json
+works.json
+list-works.json
+*.log
+
+# SQLite
+*.db
+*.db-shm
+*.db-wal
+
+# OS
+.DS_Store
+Thumbs.db

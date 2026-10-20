@@ -1,0 +1,26 @@
+# 机密：绝不入库
+config/secrets.local.json
+# 本地词表（政治类等敏感词，公开仓库里不放）
+config/risk-policy.local.json
+
+# 运行态
+state/
+logs/
+test/out-*.json
+test/tmp-*
+test/mock-llm-calls.log
+tool/comments-output/
+tool/data/
+tool/.playwright/
+tool/node_modules/
+
+# tool/ 随仓库一起发布；它自己的 .gitignore 管运行产物
+
+# 手工快照目录（git 接管前的临时备份，不入库；内容已在提交历史里）
+.sync-backup-*/
+.rollback-*/
+*.orig
+*.rej
+
+# AI 工作日志（每天变动、含对话原文，不属于项目产物）
+.workbuddy/

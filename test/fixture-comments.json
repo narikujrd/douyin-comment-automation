@@ -1,0 +1,18 @@
+{
+  "selectedWork": { "title": "【自测】示例作品" },
+  "count": 12,
+  "comments": [
+    { "username": "用户A", "commentText": "讲得真好，学到了", "replyMessage": "" },
+    { "username": "用户B", "commentText": "这个参数怎么设置？", "replyMessage": "" },
+    { "username": "用户C", "commentText": "谢谢分享，收藏了", "replyMessage": "" },
+    { "username": "用户D", "commentText": "再这样我就去投诉你", "replyMessage": "" },
+    { "username": "用户E", "commentText": "加我微信 13800138000 详聊", "replyMessage": "" },
+    { "username": "用户F", "commentText": "有点失望，和说的不一样", "replyMessage": "" },
+    { "username": "用户G", "commentText": "哈哈", "replyMessage": "" },
+    { "username": "用户H", "commentText": "第一次刷到你的视频", "replyMessage": "" },
+    { "username": "用户I", "commentText": "这个涉及税务问题吧", "replyMessage": "" },
+    { "username": "用户J", "commentText": "太牛了", "replyMessage": "" },
+    { "username": "用户K", "commentText": "666", "replyMessage": "" },
+    { "username": "用户L", "commentText": "求个教程，哪里能找到", "replyMessage": "" }
+  ]
+}
