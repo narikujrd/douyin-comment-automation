@@ -25,20 +25,16 @@
 把下面整段复制，发给你在用的 AI 编程助手（WorkBuddy / Claude Code / Codex / Cursor 等），它会自己下载、装依赖、告诉你下一步：
 
 ```text
-帮我把这个开源项目下载到本地、装好依赖，然后告诉我怎么启动：
+帮我把这个项目装到本地，然后告诉我怎么启动：
 https://github.com/narikujrd/douyin-comment-automation
 
-请按这个顺序做：
-1. 用 git clone https://github.com/narikujrd/douyin-comment-automation.git 下载到你当前的工作目录。
-2. 如果 git 或 github.com 连不上，改用压缩包地址下载后解压（这条路走 CDN，一般能通）：
+1. git clone 不通就改用压缩包：
    https://codeload.github.com/narikujrd/douyin-comment-automation/tar.gz/refs/heads/main
-3. 进目录先读 README-首次使用.md，按里面写的来，不要改任何代码。
-4. 检查 Node.js 版本是否 ≥ 20；不满足就先告诉我，不要自己换成别的运行时。
-5. 装依赖：在项目根执行 cd tool && npm install，再执行 npx playwright install chromium。
-6. 装完验证能跑起来：在项目根执行 node scripts/ui-server.mjs（会打印监听端口，默认 5190），用 curl 访问 http://127.0.0.1:5190 拿到 200 就说明装好了，然后把进程关掉。
-7. 最后只用三句话告诉我：东西装在哪、接下来双击哪个文件启动、第一次用要注意什么。
+2. 进目录后执行：cd tool && npm install && npx playwright install chromium
+3. 装完读 README-首次使用.md，告诉我双击哪个文件启动
+4. 需要 Node.js ≥ 20，不够先跟我说
 
-不要替我填 API Key，不要改我的配置，不要把任何账号信息、登录态或密钥发到网上或发给任何第三方。
+别替我填 API Key，别改配置，别把登录态或密钥外传。
 ```
 
 ---
