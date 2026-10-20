@@ -35,7 +35,7 @@ https://github.com/narikujrd/douyin-comment-automation
 3. 进目录先读 README-首次使用.md，按里面写的来，不要改任何代码。
 4. 检查 Node.js 版本是否 ≥ 20；不满足就先告诉我，不要自己换成别的运行时。
 5. 装依赖：在项目根执行 cd tool && npm install，再执行 npx playwright install chromium。
-6. 装完执行 node test/self-test-console.mjs 跑一次离线自测，把通过/失败数量报给我。
+6. 装完验证能跑起来：在项目根执行 node scripts/ui-server.mjs（会打印监听端口，默认 5190），用 curl 访问 http://127.0.0.1:5190 拿到 200 就说明装好了，然后把进程关掉。
 7. 最后只用三句话告诉我：东西装在哪、接下来双击哪个文件启动、第一次用要注意什么。
 
 不要替我填 API Key，不要改我的配置，不要把任何账号信息、登录态或密钥发到网上或发给任何第三方。
